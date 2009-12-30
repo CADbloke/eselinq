@@ -1,0 +1,1355 @@
+DemandLoadFunction<JET_ERR (JET_API *)(JET_SESID sesid, JET_TABLEID tableid, JET_RECSIZE *precsize, JET_GRBIT const grbit)> JetGetRecordSize_demand(L"esent.dll", "JetGetRecordSize");
+
+///<summary>Subset of Cursor methods and properties for safe readonly access to a single row. See Cursor for descriptions.</summary>
+public interface struct ReadRecord
+{
+	property EseObjects::Session ^Session{EseObjects::Session ^get();}
+	property EseObjects::Database ^Database{EseObjects::Database ^get();}
+	generic <class T> T Retrieve(Column ^Col, ulong SizeHint);
+	generic <class T> T Retrieve(Column ^Col);
+	ulong RetrieveIndexTagSequence(Column ^Col);
+	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
+	generic <class T> array<T> ^RetrieveAllValues(Column ^Col);
+	array<Field> ^RetreiveAllFields(ulong SizeLimit);
+	array<Field> ^RetreiveAllFields();
+};
+
+///<summary>Represents an open cursor in the database</summary>
+public ref class Cursor sealed : ReadRecord
+{
+	TableID ^_TableID;
+	Index ^_CurrentIndex;
+
+internal:
+	Cursor(TableID ^TableID) :
+		_TableID(TableID),
+		_CurrentIndex(nullptr)
+	{}
+
+public:
+	///<summary>Opens a new cursor for the corresponding table. Inherits OpenOptions flags used when opening that table originally. Calls JetDupCursor.</summary>
+	Cursor(Table ^SrcTable) :
+		_TableID(GetTableIDObj(SrcTable)->Duplicate()),
+		_CurrentIndex(nullptr)
+	{}
+
+	///<summary>
+	///Opens a new cursor for the same table as the specified cursor.
+	///Inherits OpenOptions flags used when opening that cursor/table originally, but not index selection or cursor position.
+	///Primary index selected, positioned to first record.
+	///Calls JetDupCursor.
+	///</summary>
+	Cursor(Cursor ^SrcCursor) :
+		_TableID(SrcCursor->_TableID->Duplicate()),
+		_CurrentIndex(nullptr)
+	{}
+
+	~Cursor()
+	{
+		_TableID->~TableID();
+	}
+
+	virtual property EseObjects::Session ^Session
+	{
+		EseObjects::Session ^get() {return _TableID->Session;}
+	}
+
+	virtual property EseObjects::Database ^Database
+	{
+		EseObjects::Database ^get() {return _TableID->Database;}
+	}
+
+	//move options
+	///<summary>When moving the cursor, moves the specified number of equal index elements instead of records. Controls use of JET_bitMoveKeyNE with Move</summary>
+	property bool MoveKeyNE;
+
+	//retrieve options
+	///<summary>Retreive modified value instead of original value.</summary>
+	property bool RetrieveCopy;
+	///<summary>Retrieve value from index without accessing main record if possible. Should not be used with the clustered index. Not compatible with RetrieveFromPrimaryBookmark.</summary>
+	property bool RetrieveFromIndex;
+	///<summary>Retrieve value from main record instead of using the index. Should not be used with the clustered index. Not compatible with RetrieveFromIndex.</summary>
+	property bool RetrieveFromPrimaryBookmark;
+	///<summary>Count null tagged entries in TagSequence. If false, they are skipped.</summary>
+	property bool RetrieveNull;
+	///<summary>Retreive NULL value if the multivalued column has no set records instead of the default value.</summary>
+	property bool RetrieveIgnoreDefault;
+	///<summary>Retrieves tuple segment of index. RetrieveFromIndex must be set.</summary>
+	property bool RetrieveTuple;
+	///<summary>Offset into long value to begin reading.</summary>
+	property ulong RetrieveOffsetLV;
+	///<summary>Sequence number of tagged field to read.</summary>
+	property ulong RetrieveTagSequence;
+
+	//----------------------------Move methods---------------------------------
+
+	///<summary>
+	///Moves the cursor to the relative number of records (or key values if MoveKeyNE is set) from the current position.
+	///Positive moves forward, negative backward.
+	///To move to the next record, use Move(1). Previous record, Move(-1).
+	///Calls JetMove.
+	///</summary>
+	bool Move(long RelativePosition)
+	{
+		ulong flags = 0;
+		flags |= MoveKeyNE * JET_bitMoveKeyNE;
+
+		JET_ERR status = JetMove(Session->_JetSesid, TableID->_JetTableID, RelativePosition, 0);
+
+		if(status == JET_errNoCurrentRecord)
+			return false;
+		
+		EseException::RaiseOnError(status);
+
+		return true;
+	}
+
+	///<summary>Moves to the first record in the index. Calls JetMove with JET_MoveFirst.</summary>
+	bool MoveFirst()
+	{
+		JET_ERR status = JetMove(Session->_JetSesid,_TableID->_JetTableID, JET_MoveFirst, 0);
+
+		if(status == JET_errNoCurrentRecord)
+			return false;
+
+		EseException::RaiseOnError(status);
+
+		return true;
+	}
+
+	///<summary>Moves to the last record in the index. Calls JetMove with JET_MoveLast.</summary>
+	bool MoveLast()
+	{
+		JET_ERR status = JetMove(Session->_JetSesid,_TableID->_JetTableID, JET_MoveLast, 0);
+
+		if(status == JET_errNoCurrentRecord)
+			return false;
+
+		EseException::RaiseOnError(status);
+
+		return true;
+	}
+
+	///<summary>Deletes the current row selected by the cursor. Calls JetDelete.</summary>
+	void Delete()
+	{
+		EseException::RaiseOnError(JetDelete(Session->_JetSesid, TableID->_JetTableID));
+	}
+
+//---------------------------Field retrieval support methods-------------------
+internal:
+	ulong RetrieveFlags()
+	{
+		ulong flags = 0;
+		flags |= RetrieveCopy * JET_bitRetrieveCopy;
+		flags |= RetrieveFromIndex * JET_bitRetrieveFromIndex;
+		flags |= RetrieveFromPrimaryBookmark * JET_bitRetrieveFromPrimaryBookmark;
+		//flags |= RetrieveTag * JET_bitRetrieveTag; //see RetrieveIndexTagSequence;
+		flags |= RetrieveNull * JET_bitRetrieveNull;
+		flags |= RetrieveIgnoreDefault * JET_bitRetrieveIgnoreDefault;
+		flags |= RetrieveTuple * JET_bitRetrieveLongId;
+		return flags;
+	}
+
+	generic <class T> T Retrieve(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, ulong size_hint, JET_GRBIT flags)
+	{
+		free_list fl;
+		void *buff;
+
+		if(size_hint <= ESEOBJECTS_MAX_ALLOCA) //small enough to allocate on stack for speed
+			buff = alloca_array(char, size_hint);
+		else
+			fl.alloc_array<char>(size_hint);
+
+		ulong buffsz = size_hint;
+		ulong req_buffsz = 0;
+
+		JET_RETINFO ret_info = {sizeof ret_info};
+
+		ret_info.ibLongValue = RetrieveOffsetLV;
+		ret_info.itagSequence = RetrieveTagSequence;
+
+		if(ret_info.itagSequence == 0)
+			ret_info.itagSequence = 1;
+
+		JET_ERR status = JetRetrieveColumn(Session->_JetSesid, _TableID->_JetTableID, colid, buff, buffsz, &req_buffsz, flags, &ret_info);
+
+		switch(status)
+		{
+		case JET_errSuccess:
+			break;
+
+		case JET_wrnBufferTruncated:
+			//buffer needs to be bigger
+			buff = fl.alloc_array<char>(req_buffsz);
+			buffsz = req_buffsz;
+
+			//this one shouldn't fail in a way we can fix here (i.e. buffer too small)
+			EseException::RaiseOnError(JetRetrieveColumn(Session->_JetSesid, _TableID->_JetTableID, colid, buff, buffsz, &req_buffsz, flags, &ret_info));
+			break;
+
+		default:
+			//if it was some other error, raise it
+			EseException::RaiseOnError(status);
+			break;
+		}
+
+		return from_memblock_generic<T>(buff, req_buffsz, coltyp, cp);
+	}
+
+public:
+	///<summary>Retrieves the data from the specificd column at the current cursor position.
+	///A SizeHint that accurately covers the amount of data in the field can increase efficency.
+	///Too small a size will still succeed, but it will require two calls to JetRetrieveColumn.
+	///Calls JetRetrieveColumn.
+	///</summary>
+	generic <class T> virtual T Retrieve(Column ^Col, ulong SizeHint)
+	{
+		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, SizeHint, RetrieveFlags());
+	}
+
+	///<summary>Retrieves the data from the specificd column at the current cursor position.
+	///Uses a default size hint suitable for small values.
+	///Calls JetRetrieveColumn.
+	///</summary>
+	generic <class T> virtual T Retrieve(Column ^Col)
+	{
+		return Retrieve<T>(Col, ESEOBJECTS_MAX_ALLOCA);
+	}
+
+	///<summary>
+	///Retrieves the sequence number of a multi-valued tagged column from an index. This is an expensive operation.
+	///Calls JetRetrieveColum with JET_bitRetrieveTag, returning the result in pretinfo->itagSequence.
+	///</summary>
+	//TEST: not sure how this is supposed to work
+	virtual ulong RetrieveIndexTagSequence(Column ^Col)
+	{
+		JET_RETINFO ret_info = {sizeof ret_info};
+
+		EseException::RaiseOnError(JetRetrieveColumn(Session->_JetSesid, _TableID->_JetTableID, Col->_JetColID, null, 0, null, JET_bitRetrieveTag, &ret_info));
+
+		return ret_info.itagSequence;
+	}
+
+internal:
+	//disassemble and free jec returned structure
+	static void FreeEnumColumn(JET_ENUMCOLUMN *jec, ulong jec_ct)
+	{		
+		if(jec)
+		{
+			for(ulong i = 0; i < jec_ct; i++)
+			{
+				if(jec[i].err == JET_wrnColumnSingleValue)
+				{
+					if(jec[i].pvData)
+						delete jec[i].pvData;
+				}
+				else
+				{
+					for(ulong j = 0; j < jec[i].cEnumColumnValue; j++)
+						if(jec[i].rgEnumColumnValue[j].pvData)
+							delete jec[i].rgEnumColumnValue[j].pvData;							
+
+					delete jec[i].rgEnumColumnValue;
+				}
+			}
+
+			delete jec;
+		}
+	}
+
+public:
+	///<summary>Retrieves all values of a multivalued field. Calls JetEnumerateColumns. Requires 5.1+.</summary>
+	///<remarks>Also works on single valued columns and fields.</remarks>
+	///<param name="SizeLimit">Maximum size in bytes to return for any one value</param>
+	generic <class T> virtual array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit)
+	{
+		JET_SESID JetSesid = Session->_JetSesid;
+		JET_TABLEID JetTableID = TableID->_JetTableID;
+
+		JET_ENUMCOLUMNID jeci = {0};
+		jeci.columnid = Col->_JetColID;
+
+		ulong jec_ct = 0;
+		JET_ENUMCOLUMN *jec = null;
+
+		EseException::RaiseOnError(JetEnumerateColumns(JetSesid, JetTableID, 1, &jeci, &jec_ct, &jec, jet_realloc_cpp, null, SizeLimit, 0));
+
+		try
+		{
+			if(jec_ct < 1)
+				throw gcnew ApplicationException("No fields returned");
+
+			array<T> ^Values = gcnew array<T>(jec->cEnumColumnValue);
+
+			for(ulong i = 0; i < jec->cEnumColumnValue; i++)
+				Values[i] = from_memblock_generic<T>(jec->rgEnumColumnValue[i].pvData, jec->rgEnumColumnValue[i].cbData, Col->_JetColTyp, Col->_CP);
+
+			return Values;
+		}
+		finally
+		{
+			FreeEnumColumn(jec, jec_ct);
+		}
+	}
+
+	///<summary>Retrieves all values of a multivalued field. Calls JetEnumerateColumns. Requires 5.1+.</summary>
+	///<remarks>Also works on single valued columns and fields.</remarks>
+	generic <class T> virtual array<T> ^RetrieveAllValues(Column ^Col)
+	{
+		return RetrieveAllValues<T>(Col, 0);
+	}
+
+	///<summary>Builds an array containing all values in all fields in the row, including all values of mutli valued fields. Calls JetEnumerateColumns. Requires 5.1+.</summary>
+	///<param name="SizeLimit">Maximum size in bytes to return for any one value</param>
+	///<remarks>Multivalued fields are returned as arrays of values</remarks>
+	virtual array<Field> ^RetreiveAllFields(ulong SizeLimit)
+	{
+		JET_SESID JetSesid = Session->_JetSesid;
+		JET_TABLEID JetTableID = TableID->_JetTableID;
+
+		IDictionary<JET_COLUMNID, Column ^> ^Cols = QueryTableColumns(JetSesid, JetTableID);
+
+		ulong jec_ct = 0;
+		JET_ENUMCOLUMN *jec = null;
+
+		EseException::RaiseOnError(JetEnumerateColumns(JetSesid, JetTableID, 0, null, &jec_ct, &jec, jet_realloc_cpp, null, SizeLimit, JET_bitEnumerateCompressOutput));
+
+		try
+		{
+			array<Field> ^Fields = gcnew array<Field>(jec_ct);
+
+			for(ulong i = 0; i < jec_ct; i++)
+			{
+				Column ^Col = Cols[jec[i].columnid];
+
+				Fields[i].Col = Col;
+
+				//different structure layout depending if the column had more than one value
+				if(jec[i].err == JET_wrnColumnSingleValue)
+					Fields[i].Val = from_memblock(jec[i].pvData, jec[i].cbData, Col->_JetColTyp, Col->_CP);
+				else
+				{
+					array<Object ^> ^Values = gcnew array<Object ^>(jec[i].cEnumColumnValue);
+
+					for(ulong j = 0; j < jec[i].cEnumColumnValue; j++)
+						Values[j] = from_memblock(jec[i].rgEnumColumnValue[j].pvData, jec[i].rgEnumColumnValue[j].cbData, Col->_JetColTyp, Col->_CP);
+
+					Fields[i].Val = Values;
+				}
+			}
+
+			return Fields;
+		}
+		finally
+		{
+			FreeEnumColumn(jec, jec_ct);
+		}
+	}
+
+	virtual array<Field> ^RetreiveAllFields()
+	{
+		return RetreiveAllFields(0);
+	}
+
+	///<summary>Represents a JET_RECSIZE, reporting record size and count measurements. Requires 6.0+.</summary>
+	value struct RecordSize
+	{
+		///<summary>Size of non-key data.</summary>
+		int64 Data;
+		///<summary>Size of long data stored out of row.</summary>
+		int64 LongData;
+		///<summary>Size of record overhead, including key data.</summary>
+		int64 Overhead;
+		///<summary>Count of non-tagged (fixed and variable) fields.</summary>
+		int64 NonTagged;
+		///<summary>Count of tagged fields.</summary>
+		int64 Tagged;
+		///<summary>Count of long values stored out of row associated with row.</summary>
+		int64 LongValues;
+		///<summary>Count of values after the first in a field for all columns.</summary>
+		int64 MultiValues;
+
+		static RecordSize operator+(RecordSize x, RecordSize y)
+		{
+			x.Data += y.Data;
+			x.LongData += y.LongData;
+			x.Overhead += y.LongData;
+			x.NonTagged += y.NonTagged;
+			x.Tagged += y.Tagged;
+			x.LongValues += y.LongValues;
+			x.MultiValues += y.MultiValues;
+			return x;
+		}
+	};
+
+internal:
+	static RecordSize JetRecSizeToRecordSize(JET_RECSIZE jrs)
+	{
+		RecordSize rs;
+		rs.Data = jrs.cbData;
+		rs.LongData = jrs.cbLongValueData;
+		rs.Overhead = jrs.cbOverhead;
+		rs.NonTagged = jrs.cNonTaggedColumns;
+		rs.Tagged = jrs.cTaggedColumns;
+		rs.LongValues = jrs.cLongValues;
+		rs.MultiValues = jrs.cMultiValues;
+		return rs;
+	}
+
+public:
+	///<summary>Record size measurements of current record.</summary>
+	property RecordSize CurrentRecordSize
+	{
+		RecordSize get()
+		{
+			JET_RECSIZE jrs;
+
+			EseException::RaiseOnError(JetGetRecordSize_demand(Session->_JetSesid, _TableID->_JetTableID, &jrs, 0));
+
+			return JetRecSizeToRecordSize(jrs);
+		}
+	};
+
+	///<summary>Record size measurements of current record, inclding only data stored in-row.</summary>
+	property RecordSize CurrentLocalRecordSize
+	{
+		RecordSize get()
+		{
+			JET_RECSIZE jrs;
+
+			EseException::RaiseOnError(JetGetRecordSize_demand(Session->_JetSesid, _TableID->_JetTableID, &jrs, JET_bitRecordSizeLocal));
+
+			return JetRecSizeToRecordSize(jrs);
+		}
+	};
+
+	//---------------------------Update support------------------------------------
+
+	//NEXT: Add support for JetRetriveColumns to get multiple cols at once
+	//5.0: retrieve all tagged fields from JetRetrieveColumns, retrieve all fields with JetGetTableInfo JET_COLUMNLIST/JetRetrieveColumns for equivalency with JetEnumerateColumns
+	//NEXT: JetEnumerateColumns: unexploited modes and options
+	//NEXT: use of columnidNextTagged
+
+	///<summary>Represents one update session of a record, bracketed by JetPrepareUpdate and either JetUpdate on Update to save or JetPrepareUpdate with JET_prepCancel on Cancel or Dispose without Update.</summary>
+	ref class Update
+	{
+		Cursor ^_Cursor;
+		bool Active;
+
+	internal:
+		Update(Cursor ^Cursor, ulong flags) :
+			_Cursor(Cursor),
+			Active(true)
+		{
+			EseException::RaiseOnError(JetPrepareUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, flags));
+		}
+
+	public:
+		///<summary>
+		///Completes the update, inserting or updating the row data.
+		///No further updates can be made with this object after calling this function. Calls JetUpdate.
+		///</summary>
+		Bookmark ^Complete()
+		{
+			if(!Active)
+				throw gcnew InvalidOperationException("Update is no longer active. It has already been completed or canceled");
+
+			uchar *buff = null;
+
+			try
+			{
+				ulong buffsz = 0;
+				ulong buffszrq = 0;
+
+				JET_ERR status = JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffsz, &buffszrq);
+
+				switch(status)
+				{
+				case JET_errSuccess:
+					break;
+
+				case JET_errBufferTooSmall:
+					buff = new uchar[buffszrq];
+					buffsz = buffszrq;
+					status = JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffsz, &buffszrq);
+				//fall through
+				default:
+					EseException::RaiseOnError(status);
+				}
+
+				Active = false;
+
+				Bookmark ^Bkmk = gcnew Bookmark(buffsz, buff);
+
+				buff = nullptr; //now owned by Bookmark, don't want to free here
+
+				return Bkmk;
+			}
+			finally
+			{
+				if(buff)
+					delete[] buff;
+			}
+		}
+
+		///<summary>
+		///Cancels the update, making no change to the database.
+		///No updates can be made with this object after calling this function.
+		///Calls JetPrepareUpdate with JET_prepCancel
+		///</summary>
+		void Cancel()
+		{
+			if(!Active)
+				throw gcnew InvalidOperationException("Update is no longer active. It has already been completed or canceled");
+
+			EseException::RaiseOnError(JetPrepareUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, JET_prepCancel));
+			Active = false;
+		}
+
+		///<summary>Dispose cancels the update iff it is still active.</summary>
+		~Update()
+		{
+			if(Active)
+				Cancel();
+		}
+
+		///<summary>Append to the end of a long value (instead of overwriting a section).</summary>
+		property bool AppendLV;
+		///<summary>Overwrite entire long value (instead of overwriting a section).</summary>
+		property bool OverwriteLV;
+		///<summary>Byte offset into long value to set data.</summary>
+		property ulong OffsetLV;
+		///<summary>Tag sequence to modify in a tagged column. Zero appends a new value to the end.</summary>
+		property ulong TagSequence;
+
+	private:
+		JET_GRBIT FlagsToBits()
+		{
+			JET_GRBIT flags = 0;
+			flags |= AppendLV * JET_bitSetAppendLV;
+			flags |= OverwriteLV * JET_bitSetOverwriteLV;
+			return flags;
+		}
+
+	public:
+		///<summary>Modifies the value of a particular column.</summary>
+		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
+		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy is set on the cursor.
+		///</remarks>
+		void Set(Column ^Col, Object ^Value)
+		{
+			free_list fl;
+			marshal_context mc;
+			void *buff = null;
+			ulong buffsz = 0;
+			bool empty;
+
+			to_memblock(Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+
+			JET_GRBIT flags = FlagsToBits();
+			JET_SETINFO si = {sizeof si};
+			si.ibLongValue = OffsetLV;
+			si.itagSequence = TagSequence;
+
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, Col->_JetColID, buff, buffsz, flags | (empty ? JET_bitSetZeroLength : 0), &si));
+		}
+		//NEXT: JetSetColumns to set multiple columns?
+
+		///<summary>Provides access to read the record being updated.</summary>
+		property ReadRecord ^Read
+		{
+			ReadRecord ^get() {return _Cursor;}
+		}
+
+		generic <class T> T Retrieve(Column ^Col, ulong SizeHint)
+		{
+			return _Cursor->Retrieve<T>(Col, SizeHint);
+		}
+
+		generic <class T> T Retrieve(Column ^Col)
+		{
+			return _Cursor->Retrieve<T>(Col);
+		}
+
+		///<summary>Record size measurements of current record being updated or inserted.</summary>
+		property RecordSize CurrentRecordSize
+		{
+			RecordSize get()
+			{
+				JET_RECSIZE jrs;
+
+				EseException::RaiseOnError(JetGetRecordSize_demand(_Cursor->Session->_JetSesid, _Cursor->_TableID->_JetTableID, &jrs, JET_bitRecordSizeInCopyBuffer));
+
+				return JetRecSizeToRecordSize(jrs);
+			}
+		};
+
+		///<summary>Record size measurements of current record being updated or inserted, inclding only data stored in-row.</summary>
+		property RecordSize CurrentLocalRecordSize
+		{
+			RecordSize get()
+			{
+				JET_RECSIZE jrs;
+
+				EseException::RaiseOnError(JetGetRecordSize_demand(_Cursor->Session->_JetSesid, _Cursor->_TableID->_JetTableID, &jrs, JET_bitRecordSizeInCopyBuffer | JET_bitRecordSizeLocal));
+
+				return JetRecSizeToRecordSize(jrs);
+			}
+		};
+	};
+
+	///<summary>Prepares to insert a new record. Default column values are used for inital state. Calls JetPrepareUpdate JET_prepInsert.</summary>
+	///<returns>An update object representing the lifetime of the update.</returns>
+	Update ^BeginInsert()
+	{
+		return gcnew Update(this, JET_prepInsert);
+	}
+
+	///<summary>Prepares to insert a new record. Initial state copied from current record. Calls JetPrepareUpdate JET_prepInsertCopy.</summary>
+	///<returns>An update object representing the lifetime of the update.</returns>
+	Update ^BeginInsertCopy()
+	{
+		return gcnew Update(this, JET_prepInsertCopy);
+	}
+
+	///<summary>Prepares to insert a new record, copying the current record and deleting it if completed. Used to modify primary key fields. Calls JetPrepareUpdate JET_prepInsertCopyDeleteOriginal.</summary>
+	///<returns>An update object representing the lifetime of the update.</returns>
+	Update ^BeginInsertCopyDeleteOriginal()
+	{
+		return gcnew Update(this, JET_prepInsertCopyDeleteOriginal);
+	}
+
+	///<summary>Prepares to replace current record's value. Calls JetPrepareUpdate JET_prepReplace.</summary>
+	///<remarks>If present, increments version column upon completion.
+	///<pr/>Cannot modify primary key values (see BeginInsertCopyDeleteOriginal).
+	///</remarks>
+	///<returns>An update object representing the lifetime of the update.</returns>
+	Update ^BeginReplace()
+	{
+		return gcnew Update(this, JET_prepReplace);
+	}
+
+	///<summary>Prepares to replace current record's value. Calls JetPrepareUpdate JET_prepReplaceNoLock.</summary>
+	///<remarks>Does not acquire a write lock on the row first. More efficient than BeginReplace but can throw EseException with JET_errWriteConflict in Complete() if another session modifies the same row concurrently.
+	///<pr/>Cannot modify primary key values (see BeginInsertCopyDeleteOriginal).
+	///</remarks>
+	///<returns>An update object representing the lifetime of the update.</returns>
+	Update ^BeginReplaceNoLock()
+	{
+		return gcnew Update(this, JET_prepReplaceNoLock);
+	}
+
+	///<summary>Performs an atomic, concurrent addition to an escrow column. Calls JetEscrowUpdate.</summary>
+	///<returns>The volaitle previous value of the column. This value is returned without versioning and is not transactional.</returns>
+	int EscrowUpdate(Column ^Col, int addend)
+	{
+		int old_value = 0;
+
+		EseException::RaiseOnError(JetEscrowUpdate(Session->_JetSesid, _TableID->_JetTableID, Col->_JetColID, &addend, sizeof addend, &old_value, sizeof old_value, null, 0));
+
+		return old_value;
+	}
+
+	///<summary>Performs an atomic, concurrent addition to an escrow column. Operation will be committed even if the transaction is rolled back. Calls JetEscrowUpdate with JET_bitEscrowNoRollback.</summary>
+	///<returns>The volaitle previous value of the column. This value is returned without versioning and is not transactional.</returns>
+	int EscrowUpdateNoRollback(Column ^Col, int addend)
+	{
+		int old_value = 0;
+
+		EseException::RaiseOnError(JetEscrowUpdate(Session->_JetSesid, _TableID->_JetTableID, Col->_JetColID, &addend, sizeof addend, &old_value, sizeof old_value, null, JET_bitEscrowNoRollback));
+
+		return old_value;
+	}
+
+//---------------------------Seek support--------------------------------------
+internal:
+	//seek implicitly with current key built
+	void Seek(JET_GRBIT grbit, bool %has_currency, bool %not_equal)
+	{
+		JET_ERR status = JetSeek(Session->_JetSesid, _TableID->_JetTableID, grbit);
+
+		switch(status)
+		{
+		case JET_errRecordNotFound:
+			not_equal = true;
+			has_currency = false;
+			return;
+
+		case JET_wrnSeekNotEqual:
+			not_equal = true;
+			has_currency = true;
+			return;
+
+		default:
+			not_equal = false;
+			has_currency = true;
+			break;
+		}
+
+		EseException::RaiseOnError(status);
+	}
+
+	//uses current key
+	bool CheckUniqueness()
+	{
+		JET_ERR status = JetSeek(Session->_JetSesid, _TableID->_JetTableID, JET_bitSeekEQ | JET_bitCheckUniqueness);
+
+		if(status == JET_wrnUniqueKey)
+			return true;
+		
+		return false;
+	}
+
+	void LoadKey(Key ^key)
+	{
+		EseException::RaiseOnError(JetMakeKey(Session->_JetSesid, _TableID->_JetTableID, key->_JetKey, key->_KeyLength, JET_bitNormalizedKey));
+	}
+
+	void LoadKey(IEnumerable<Field> ^KeyFields, JET_GRBIT grbit)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldsIntoTableID(sesid, tabid, KeyFields, grbit);
+	}
+
+	bool SetIxRange(JET_GRBIT grbit)
+	{
+		JET_ERR status = JetSetIndexRange(Session->_JetSesid, _TableID->_JetTableID, grbit);
+
+		if(status == JET_errNoCurrentRecord)
+			return false;
+
+		EseException::RaiseOnError(status);
+
+		return false;
+	}
+
+public:
+	///<summary>Seeks to the specified position.</summary>
+	///<returns>True iff there is a current record after the seek.</returns>
+	bool Seek(Seekable ^s)
+	{
+		bool has_currency, not_exact;
+		s->SeekTo(has_currency, not_exact, this);
+		return has_currency;
+	}
+
+	///<summary>Seeks to the specified position.</summary>
+	///<param name="NotEqual">Returns true iff the exact record couldn't be found.</param>
+	///<returns>True iff there is a current record after the seek.</returns>
+	bool Seek(Seekable ^s, [Out] bool %NotEqual)
+	{
+		bool has_currency = false;
+		s->SeekTo(has_currency, NotEqual, this);
+		return has_currency;
+	}
+
+	
+	//----------------------------Direct Seek methods--------------------------
+
+	///<summary>Seeks to the specified 1 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		
+		bool has_currency, not_exact;		
+		Seek(JET_bitSeekEQ, has_currency, not_exact);
+		return has_currency;
+	}
+	///<summary>Seeks to the specified 1 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Match MatchMode, SeekRel Rel)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey | MatchToGrbit(MatchMode));
+
+		bool has_currency, not_exact;
+		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
+		return has_currency;
+	}
+
+	///<summary>Seeks to the specified 2 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		
+		bool has_currency, not_exact;		
+		Seek(JET_bitSeekEQ, has_currency, not_exact);
+		return has_currency;
+	}
+	///<summary>Seeks to the specified 2 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2, Match MatchMode, SeekRel Rel)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, MatchToGrbit(MatchMode));
+
+		bool has_currency, not_exact;
+		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
+		return has_currency;
+	}
+
+	///<summary>Seeks to the specified 3 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2, Column ^C3, Object ^K3)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
+		
+		bool has_currency, not_exact;		
+		Seek(JET_bitSeekEQ, has_currency, not_exact);
+		return has_currency;
+	}
+	///<summary>Seeks to the specified 3 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2, Column ^C3, Object ^K3, Match MatchMode, SeekRel Rel)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, MatchToGrbit(MatchMode));
+
+		bool has_currency, not_exact;
+		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
+		return has_currency;
+	}
+
+	///<summary>Seeks to the specified 4 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2, Column ^C3, Object ^K3, Column ^C4, Object ^K4)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C4, K4, 0);
+		
+		bool has_currency, not_exact;		
+		Seek(JET_bitSeekEQ, has_currency, not_exact);
+		return has_currency;
+	}
+	///<summary>Seeks to the specified 4 field key position.</summary>
+	bool Seek(Column ^C1, Object ^K1, Column ^C2, Object ^K2, Column ^C3, Object ^K3, Column ^C4, Object ^K4, Match MatchMode, SeekRel Rel)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, C4, K4, MatchToGrbit(MatchMode));
+
+		bool has_currency, not_exact;
+		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
+		return has_currency;
+	}
+
+	///<summary>Checks if key appears exactly once in the index. Calls JetMakeKey and JetSeek JET_bitCheckUniqueness.</summary>
+	bool CheckUniqueness(Key ^key)
+	{
+		LoadKey(key);
+		return CheckUniqueness();
+	}
+
+	///<summary>Checks if key appears exactly once in the index. Calls JetMakeKey and JetSeek JET_bitCheckUniqueness.</summary>
+	bool CheckUniqueness(IEnumerable<Field> ^KeyFields)
+	{
+		LoadKey(KeyFields, 0);
+		return CheckUniqueness();
+	}
+
+	//---------------------------Limit/range support-------------------------------
+
+	///<summary>Sets a limit that will be encountered while scrolling forward (positive Move values) at the specified key.</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	///<returns>True iff there are any values between the current position and the specified key.</returns>
+	bool SetUpperLimit(Limitable ^key)
+	{
+		return key->LimitTo(this, true);
+	}
+
+	///<summary>Sets a limit that will be encountered while scrolling backwards (negative Move values) at the specified key.</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	///<returns>True iff there are any values between the current position and the specified key.</returns>
+	bool SetLowerLimit(Limitable ^key)
+	{
+		return key->LimitTo(this, false);
+	}
+
+	///<summary>Positions the cursor to k1 and sets a upper limit to stop at k2, so that by scrolling forward the values within the range will be read.</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool ForwardRange(Seekable ^k1, Limitable ^k2)
+	{
+		bool has_currency, not_equal;
+		k1->SeekTo(has_currency, not_equal, this);
+		has_currency = k2->LimitTo(this, true) && has_currency;
+		return has_currency;
+	}
+
+	///<summary>Positions the cursor to k1 and sets a lower limit to stop at k2, so that by scrolling backward the values within the range will be read.</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool BackwardRange(Seekable ^k1, Limitable ^k2)
+	{
+		bool has_currency, not_equal;
+		k1->SeekTo(has_currency, not_equal, this);
+		has_currency = k2->LimitTo(this, false) && has_currency;
+		return has_currency;
+	}
+
+	///<summary>Positions the cursor to k1 and sets a upper limit to stop at k2, so that by scrolling forward the values within the range will be read.
+	///<pr/>Both keys will ahve wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
+	///</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool ForwardRangeInclusive(array<Field> ^k1, array<Field> ^k2)
+	{
+		bool has_currency, not_equal;
+		
+		LoadKey(k1, JET_bitFullColumnStartLimit);
+		Seek(JET_bitSeekGE, has_currency, not_equal);
+		
+		LoadKey(k2, JET_bitFullColumnEndLimit);
+		has_currency = SetIxRange(JET_bitRangeUpperLimit) && has_currency;
+		
+		return has_currency;
+	}
+
+	///<summary>Positions the cursor to k1 and sets a lower limit to stop at k2, so that by scrolling backward the values within the range will be read.
+	///<pr/>Both keys will ahve wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
+	///</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool BackwardRangeInclusive(array<Field> ^k1, array<Field> ^k2)
+	{
+		bool has_currency, not_equal;
+
+		LoadKey(k1, JET_bitFullColumnEndLimit);
+		Seek(JET_bitSeekLE, has_currency, not_equal);
+		
+		LoadKey(k2, JET_bitFullColumnStartLimit);
+		has_currency = SetIxRange(0) && has_currency;
+		
+		return has_currency;
+	}
+
+	///<summary>Cancels any range limit currently in effect.</summary>
+	///<returns>True iif there was a range in effect previously that has been cancels.</returns>
+	bool CancelRange()
+	{
+		JET_ERR status = JetSetIndexRange(Session->_JetSesid, _TableID->_JetTableID, JET_bitRangeRemove);
+
+		if(status == JET_errInvalidOperation) //i.e. no range in effect
+			return false;
+
+		EseException::RaiseOnError(status);
+
+		return true;
+	}
+
+	//---------------------------Index support-------------------------------------
+
+	///<summary>Controls the currently selected index.</summary>
+	///<remarks>When setting the property, the corresponding entry in the index is used if possible, otherwise the first item is selected.
+	///<pr/>Tag sequence to seek within a multivalued key is taken from RetrieveTagSequence (only applicable if a record is current).
+	///</remarks>
+	property Index ^CurrentIndex
+	{
+		Index ^get() {return _CurrentIndex;}
+		void set(Index ^newIndex)
+		{
+			JET_GRBIT mode = JET_bitNoMove;
+
+			//there are a couple of conditions that could make the call work when it fails, so the call is done in a loop
+			ulong loop_limit = 3; //in case the fixes don't work, don't retry excessively
+
+			while(loop_limit)
+			{
+				loop_limit--;
+
+				JET_ERR status = JetSetCurrentIndex4(Session->_JetSesid, TableID->_JetTableID, null, newIndex->_JetIndexID, mode, RetrieveTagSequence);
+
+				switch(status)
+				{
+				case JET_errInvalidIndexId:
+					//apparently the indexid expired
+					newIndex->FixIndexID(Session->_JetSesid, TableID->_JetTableID);
+					continue;
+
+				case JET_errNoCurrentRecord:
+					//if there's no corresponding entry, just start at the top.
+					mode = JET_bitMoveFirst;
+					continue;
+
+				default:
+					EseException::RaiseOnError(status);
+					_CurrentIndex = newIndex;
+					return;
+				}
+			}
+		}
+	}
+
+	///<summary>Selects the specified index, moving to the corresponding record in the index. Calls JetSetCurrentIndex4.</summary>
+	///<remarks>If the index doesn't have a corresponding record, the call fails.</remarks>
+	void SetIndexCorresponding(Index ^newIndex, ulong TagSequence)
+	{
+		//the index entry could have expired, which requires retrying the call
+		ulong loop_limit = 2; //but don't keep retrying if it doesn't work
+
+		while(loop_limit)
+		{
+			loop_limit--;
+
+			JET_ERR status = JetSetCurrentIndex4(Session->_JetSesid, TableID->_JetTableID, null, newIndex->_JetIndexID, JET_bitNoMove, TagSequence);
+
+			switch(status)
+			{
+			case JET_errInvalidIndexId:
+				//apparently the indexid expired
+				newIndex->FixIndexID(Session->_JetSesid, TableID->_JetTableID);
+				continue;
+
+			default:
+				EseException::RaiseOnError(status);
+				_CurrentIndex = newIndex;
+				return;
+			}
+		}
+	}
+
+	///<summary>Selects the specified index, moving to the corresponding record in the index. Calls JetSetCurrentIndex4.</summary>
+	///<remarks>If the index doesn't have a corresponding record, the call fails.
+	///<pr/>Tag sequence to seek within a multivalued key is taken from RetrieveTagSequence.
+	///</remarks>
+	void SetIndexCorresponding(Index ^newIndex)
+	{
+		SetIndexCorresponding(newIndex, RetrieveTagSequence);
+	}
+
+	///<summary>Selects the specified index, moving to the first record in the index. Calls JetSetCurrentIndex4.</summary>
+	///<remarks>If the index doesn't have a corresponding record, the call fails.
+	///<pr/>Tag sequence to seek within a multivalued key is taken from RetrieveTagSequence.
+	///</remarks>
+	void SetIndexMoveFirst(Index ^newIndex)
+	{
+		if(newIndex->_JetIndexID == _CurrentIndex->_JetIndexID) //setting to the same index won't move the cursor
+		{
+			EseException::RaiseOnError(JetMove(Session->_JetSesid, TableID->_JetTableID, JET_MoveFirst, 0));
+			return;
+		}
+
+		//the index entry could have expired, which requires retrying the call
+		ulong loop_limit = 2; //but don't keep retrying if it doesn't work
+
+		while(loop_limit)
+		{
+			loop_limit--;
+
+			JET_ERR status = JetSetCurrentIndex4(Session->_JetSesid, TableID->_JetTableID, null, newIndex->_JetIndexID, JET_bitMoveFirst, 0);
+
+			switch(status)
+			{
+			case JET_errInvalidIndexId:
+				//apparently the indexid expired
+				newIndex->FixIndexID(Session->_JetSesid, TableID->_JetTableID);
+				continue;
+
+			default:
+				EseException::RaiseOnError(status);
+				_CurrentIndex = newIndex;
+				return;
+			}
+		}
+	}
+
+	///<summary>Intersects the index ranges selected in the specified cursors. Calls JetIntersectIndexes.</summary>
+	///<remarks>Each Cursor must have a range set and the desired secondary index selected. All indexes must be on the same table. Any particular index can only be used once.
+	///<pr/>The current position of the specified indexes is undefined after the call.
+	///</remarks>
+	///<param name="Results">Returns a temp table cursor with the result rows. The cursor can only be scanned forward.</param>
+	///<param name="BookmarkCol">The returned temp table has a single column containing bookmarks. This value returns that column reference.</param>
+	///<param name="Indexes">A collection of cursors with ranges set and indexes selected to intersect. At most 64 indexes can be specified.</param>
+	///<returns>The number of records in the returned cursor</returns>
+	static ulong IntersectIndexes([Out] Cursor ^%Results, [Out] Column ^%BookmarkCol, ICollection<Cursor ^> ^Indexes)
+	{
+		free_list fl;
+		JET_SESID sesid;
+		JET_INDEXRANGE *jixrs;
+		JET_RECORDLIST jrl = {sizeof jrl};
+
+		jixrs = fl.alloc_array_zero<JET_INDEXRANGE>(Indexes->Count);
+		ulong i = 0;
+
+		for each(Cursor ^Csr in Indexes)
+		{
+			sesid = Csr->Session->_JetSesid;
+			jixrs[i].cbStruct = sizeof jixrs[i];
+			jixrs[i].tableid = Csr->_TableID->_JetTableID;
+			jixrs[i].grbit = JET_bitRecordInIndex;
+			i++;
+		}
+
+		EseException::RaiseOnError(JetIntersectIndexes(sesid, jixrs, Indexes->Count, &jrl, 0));
+
+		return jrl.cRecord;
+	}
+
+	//---------------------------Misc----------------------------------------------
+
+	///<summary>Counts the number of index entries going forward in from the current position. Calls JetIndexRecordCount.</summary>
+	///<remarks>Any limit or range will constrain the count, which can be used to count records in a particular range.</remarks>
+	///<param name="limit">Maximum count to return. Used to limit the IO activity walking entries if a particular threshold is reached.</param>
+	ulong ForwardRecordCount(ulong limit)
+	{
+		ulong ct = 0;
+
+		EseException::RaiseOnError(JetIndexRecordCount(Session->_JetSesid, TableID->_JetTableID, &ct, limit));
+
+		return ct;
+	}
+
+	///<summary>Counts the number of index entries going forward in from the current position. Calls JetIndexRecordCount.</summary>
+	///<remarks>Any limit or range will limit the count, which can be used to count records in a particular range.
+	///<pr/>All eligible records will be counted. This can cause a large amount of IO.
+	///</remarks>
+	ulong ForwardRecordCount()
+	{
+		return ForwardRecordCount(0);
+	}
+
+	///<summary>Approximate position within an index. Use with Cursor.ApproximatePosition. Represents a JET_RECPOS.</summary>
+	value struct RecordPosition
+	{
+		///<summary>Approximate number of entries previous to the current key.</summary>
+		ulong EntriesLessThan;
+		///<summary>Approximate number of entries equal to current key. Always 1 in current versions.</summary>
+		ulong EntriesInRange;
+		///<summary>Approximate number of entries in the index total.</summary>
+		ulong EntriesTotal;
+	};
+
+	///<summary>Approximate positioning of cursor within current index. Get to estimate current postion, set to move to approximate position. Calls JetGetRecordPosition for get and JetGotoPosition for set.</summary>
+	///<remarks>The position is not exact and not stable. Use bookmarks instead when exact positioning is needed.
+	///<pr/>Position is not transactionally isolated. Corresponding position in index (from set or get of property) can change between contiguous calls of the function.
+	///<pr/>A suggested use is in a UI operated scroll bar.
+	///</remarks>
+	property RecordPosition ApproximatePosition
+	{
+		RecordPosition get()
+		{
+			JET_RECPOS jrp = {sizeof jrp};
+
+			EseException::RaiseOnError(JetGetRecordPosition(Session->_JetSesid, TableID->_JetTableID, &jrp, sizeof jrp));
+
+			RecordPosition rp;
+			rp.EntriesLessThan = jrp.centriesLT;
+			rp.EntriesInRange = jrp.centriesInRange;
+			rp.EntriesTotal = jrp.centriesTotal;
+			return rp;
+		}
+		void set(RecordPosition rp)
+		{
+			JET_RECPOS jrp = {sizeof jrp};
+			jrp.centriesLT = rp.EntriesLessThan;
+			jrp.centriesInRange = rp.EntriesInRange;
+			jrp.centriesTotal= rp.EntriesTotal;
+
+			EseException::RaiseOnError(JetGotoPosition(Session->_JetSesid, TableID->_JetTableID, &jrp));
+		}
+	}
+
+	///<summary>Notifies ESE that the entire index is to be scanned to optimize data access. Calls JetSetTableSequential. Requires 5.1+.</summary>
+	///<remarks>Call ResetSequentialScanHint to end this mode.</remarks>
+	void SetSequentialScanHint()
+	{
+		EseException::RaiseOnError(JetSetTableSequential(Session->_JetSesid, TableID->_JetTableID, 0));
+	}
+
+	///<summary>Notifies ESE that full index scanning has ended. See SetSequentialScanHint. Calls JetResetTableSequential. Requires 5.1+.</summary>
+	void ResetSequentialScanHint()
+	{
+		EseException::RaiseOnError(JetResetTableSequential(Session->_JetSesid, TableID->_JetTableID, 0));
+	}
+
+	///<summary>Explicitly prevent other sessions from writing to the current row by taking a pessimistic read lock on the record. Calls JetGetLock.</summary>
+	///<remarks>Normally, versioning is used to provide a consistent picture of the database.
+	///<pr/>Read locks are compatible with other read locks, but not write locks.
+	///<pr/>Locks are released at the end of the transaction.
+	///</remarks>
+	void AcquireReadLock()
+	{
+		EseException::RaiseOnError(JetGetLock(Session->_JetSesid, TableID->_JetTableID, JET_bitReadLock));
+	}
+
+	///<summary>Explicitly reservses the ability to write to the row. Calls JetGetLock.</summary>
+	///<remarks>A write lock is implicitly taken when a row is modified. This function allows early aquisition.
+	///<pr/>Write locks are not compatible with other read or read locks held by other sessions, but are compatible with read locks in the same session.
+	///<pr/>Locks are released at the end of the transaction.
+	///</remarks>
+	void AcquireWriteLock()
+	{
+		EseException::RaiseOnError(JetGetLock(Session->_JetSesid, TableID->_JetTableID, JET_bitWriteLock));
+	}
+
+	///<summary>Acquires both a read and write lock. See AcquireReadLock and AcquireWriteLock. Calls JetGetLock.</summary>
+	///<remarks>Locks are released at the end of the transaction.</remarks>
+	void AcquireReadWriteLock()
+	{
+		EseException::RaiseOnError(JetGetLock(Session->_JetSesid, TableID->_JetTableID, JET_bitReadLock | JET_bitWriteLock));
+	}
+
+	///<summary>Best effort detection if an update to the current row would result in a write conflict. Calls JetGetCursorInfo.</summary>
+	///<returns>True if a write conflict will occur. False if a write conflict is unknown. Note that a write conflict could still occur even if false is returned.</returns>
+	bool IsWriteConflictExpected()
+	{
+		return JetGetCursorInfo(Session->_JetSesid, TableID->_JetTableID, null, 0, 0) == JET_errWriteConflict;
+	}
+
+internal:
+	property EseObjects::TableID ^TableID
+	{
+		EseObjects::TableID ^get() {return _TableID;}
+	}
+};
+
+
+///<summary>Position constructed from a colleciton of fields.</summary>
+public ref struct FieldPosition : public Limitable
+{
+	///<summary>Specifies the key fields that make up the position. Not all the fields need to be specified when using a wildcard option.</summary>
+	ICollection<Field> ^Fields;
+	///<summary>Specifies the match mode to use when putting together the key. Controls how unspecified fields are interpreted.</summary>
+	EseObjects::Match Match;
+	///<summary>Relative position to key.</summary>
+	EseObjects::SeekRel Rel;
+
+	FieldPosition() :
+		Fields(nullptr),
+		Match(Match::Full),
+		Rel(SeekRel::EQ)
+	{}
+
+	FieldPosition(ICollection<Field> ^Fields) :
+		Fields(Fields),
+		Match(Match::Full),
+		Rel(SeekRel::EQ)
+	{}
+
+	FieldPosition(ICollection<Field> ^Fields, EseObjects::Match Match, SeekRel Rel) :
+		Fields(Fields),
+		Match(Match),
+		Rel(Rel)
+	{}
+
+internal:
+	virtual void SeekTo(bool %HasCurrency, bool %NotEqual, Cursor ^c) override
+	{
+		c->LoadKey(Fields, MatchToGrbit(Match));
+		c->Seek(SeekRelToGrbit(Rel), HasCurrency, NotEqual);
+	}
+
+	virtual bool LimitTo(Cursor ^c, bool upper) override
+	{
+		c->LoadKey(Fields, MatchToGrbit(Match));
+		return c->SetIxRange((SeekRelIsInclusive(Rel) ? JET_bitRangeInclusive : 0) | (upper ? JET_bitRangeUpperLimit : 0));
+	}
+};
+
+///<summary>Position constructed from a Key object.</summary>
+public ref struct KeyPosition : public Limitable
+{
+	///<summary>Specifies the key value to use for the position. The match mode was specified when the key was built.</summary>
+	EseObjects::Key ^Key;
+	///<summary>Relative position to key.</summary>
+	EseObjects::SeekRel Rel;
+
+	KeyPosition() :
+		Key(nullptr),
+		Rel(SeekRel::EQ)
+	{}
+
+	KeyPosition(EseObjects::Key ^Key) :
+		Key(Key),
+		Rel(SeekRel::EQ)
+	{}
+
+	KeyPosition(EseObjects::Key ^Key, SeekRel Rel) :
+		Key(Key),
+		Rel(Rel)
+	{}
+
+internal:
+	virtual void SeekTo(bool %HasCurrency, bool %NotEqual, Cursor ^c) override
+	{
+		c->LoadKey(Key);
+		c->Seek(SeekRelToGrbit(Rel), HasCurrency, NotEqual);
+	}
+
+	virtual bool LimitTo(Cursor ^c, bool upper) override
+	{
+		c->LoadKey(Key);
+		return c->SetIxRange((SeekRelIsInclusive(Rel) ? JET_bitRangeInclusive : 0) | (upper ? JET_bitRangeUpperLimit : 0));
+	}
+};
+
+public ref struct CombinedBookmarkPosition : public Seekable
+{
+	EseObjects::Bookmark ^Primary;
+	EseObjects::SecondaryBookmark ^Secondary;
+
+	CombinedBookmarkPosition() :
+		Primary(nullptr),
+		Secondary(nullptr)
+	{}
+
+	CombinedBookmarkPosition(EseObjects::Bookmark ^Primary, EseObjects::SecondaryBookmark ^Secondary) :
+		Primary(Primary),
+		Secondary(Secondary)
+	{}
+
+internal:
+	virtual void SeekTo(bool %HasCurrency, bool %NotEqual, Cursor ^c) override
+	{		
+		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCurosrSesid(c), GetCursorTableID(c), Secondary->_JetBookmark, Secondary->_BookmarkLength, Primary->_JetBookmark, Primary->_BookmarkLength, 0);
+
+		NotEqual = false;
+		switch(status)
+		{
+		case JET_errRecordDeleted:
+		case JET_errNoCurrentRecord:
+			HasCurrency = false;
+			break;
+		}
+
+		EseException::RaiseOnError(status);
+		HasCurrency = true;
+	}
+};
+
+
+JET_TABLEID GetCursorTableID(Cursor ^Csr)
+{
+	return Csr->TableID->_JetTableID;
+}
+
+JET_SESID GetCurosrSesid(Cursor ^Csr)
+{
+	return Csr->Session->_JetSesid;
+}

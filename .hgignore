@@ -1,0 +1,19 @@
+# Boring file regexps:
+syntax: regexp
+
+### MS Visual Studio
+# Output directories
+(^|/)Debug($|/)
+(^|/)Release($|/)
+(^|/)x64($|/)
+(^|/)x86($|/)
+
+# User option files
+\.suo$
+\.user$
+
+# Pre compiled resource
+\.aps$
+
+# Intel. sense database
+\.ncb$

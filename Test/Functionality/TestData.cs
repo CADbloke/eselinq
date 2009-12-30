@@ -1,0 +1,264 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using EseObjects;
+
+namespace Test.Functionality
+{
+	public class TestData : IDisposable
+	{
+		public Table Order;
+		public Column OrderID;
+		public Column OrderOpenDate;
+		public Column OrderCustomer;
+		public Index OrderIx;
+		public Index OrderOpenDateIx;
+		public Index OrderCustomerIx;
+
+		public Table Customer;
+		public Column CustomerID;
+		public Column CustomerName;
+		public Index CustomerIx;
+		public Index CustomerNameIx;
+
+		public Table OrderLine;
+		public Column OrderLineOrder;
+		public Column OrderLineSeq;
+		public Column OrderLineDesc;
+		public Column OrderLineAmount;
+		public Index OrderLineIx;
+		public Index OrderLineDescIx;
+
+		public TestData(Session sess, Database db)
+		{
+			using(var tr = new Transaction(sess))
+			{
+				Column[] newcols;
+				Index[] newixs;
+
+				var tco = Table.CreateOptions.NewWithLists("Order");
+				tco.Columns.Add(new Column.CreateOptions("ID", Column.Type.Long));
+				tco.Columns.Add(new Column.CreateOptions("OpenDate", Column.Type.DateTime));
+				tco.Columns.Add(new Column.CreateOptions("Customer", Column.Type.Long));
+
+				var ixco = Index.CreateOptions.NewPrimary("PK", true);
+				ixco.KeyColumns.Add("+ID");
+				tco.Indexes.Add(ixco);
+
+				ixco = Index.CreateOptions.NewSecondary("OpenDateIx", false);
+				ixco.KeyColumns.Add("-OpenDate");
+				tco.Indexes.Add(ixco);
+
+				ixco = Index.CreateOptions.NewSecondary("CustomerIx", false);
+				ixco.KeyColumns.Add("+Customer");
+				tco.Indexes.Add(ixco);
+				
+				Order = Table.Create(sess, db, tco, out newcols, out newixs);
+				OrderID = newcols[0];
+				OrderOpenDate = newcols[1];
+				OrderCustomer = newcols[2];
+				OrderIx = newixs[0];
+				OrderOpenDateIx = newixs[1];
+				OrderCustomerIx = newixs[2];
+
+
+				tco = Table.CreateOptions.NewWithLists("Customer");
+				tco.Columns.Add(new Column.CreateOptions("ID", Column.Type.Long));
+				tco.Columns.Add(new Column.CreateOptions("Name", Column.Type.Text, Column.CodePage.Unicode));
+
+				ixco = Index.CreateOptions.NewPrimary("PK", true);
+				ixco.KeyColumns.Add("+ID");
+				tco.Indexes.Add(ixco);
+
+				ixco = Index.CreateOptions.NewSecondary("Name", true);
+				ixco.KeyColumns.Add("+Name");
+				tco.Indexes.Add(ixco);
+
+				Customer = Table.Create(sess, db, tco, out newcols, out newixs);
+				CustomerID = newcols[0];
+				CustomerName = newcols[1];
+				CustomerIx = newixs[0];
+				CustomerNameIx = newixs[1];
+
+
+				tco = Table.CreateOptions.NewWithLists("OrderLine");
+				tco.Columns.Add(new Column.CreateOptions("Order", Column.Type.Long));
+				tco.Columns.Add(new Column.CreateOptions("Seq", Column.Type.Long));
+				tco.Columns.Add(new Column.CreateOptions("Desc", Column.Type.LongText, Column.CodePage.English));
+				tco.Columns.Add(new Column.CreateOptions("Amount", Column.Type.Currency));
+
+				ixco = Index.CreateOptions.NewPrimary("PK", true);
+				ixco.KeyColumns.Add("+Order");
+				ixco.KeyColumns.Add("+Seq");
+				tco.Indexes.Add(ixco);
+
+				ixco = new Index.CreateOptions
+				{
+					Name = "Desc",
+					Tuples = true,
+					TupleLimits = new Index.TupleLimits
+					{
+						LengthMin = 2
+					},
+					KeyColumns = new List<String>()
+				};
+				ixco.KeyColumns.Add("+Desc");
+				tco.Indexes.Add(ixco);
+
+				OrderLine = Table.Create(sess, db, tco, out newcols, out newixs);
+				OrderLineOrder = newcols[0];
+				OrderLineSeq = newcols[1];
+				OrderLineDesc = newcols[2];
+				OrderLineAmount = newcols[3];
+				OrderLineIx = newixs[0];
+				OrderLineDescIx = newixs[1];
+
+				using(var c = new Cursor(Customer))
+				{
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 100);
+						u.Set(CustomerName, "Bob");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 103);
+						u.Set(CustomerName, "Billie");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 104);
+						u.Set(CustomerName, "Bub");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 105);
+						u.Set(CustomerName, "Barb");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 106);
+						u.Set(CustomerName, "Belle");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 101);
+						u.Set(CustomerName, "Judy");
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(CustomerID, 102);
+						u.Set(CustomerName, "Tom");
+						u.Complete();
+					}
+				}
+
+				using(var c = new Cursor(Order))
+				{
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderID, 2025);
+						u.Set(OrderCustomer, 100);
+						u.Set(OrderOpenDate, new DateTime(2009, 10, 13));
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderID, 2026);
+						u.Set(OrderCustomer, 100);
+						u.Set(OrderOpenDate, new DateTime(2009, 10, 15));
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderID, 2027);
+						u.Set(OrderCustomer, 100);
+						u.Set(OrderOpenDate, new DateTime(2009, 11, 1));
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderID, 3063);
+						u.Set(OrderCustomer, 101);
+						u.Set(OrderOpenDate, new DateTime(2009, 11, 1));
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderID, 3095);
+						u.Set(OrderCustomer, 102);
+						u.Set(OrderOpenDate, new DateTime(2009, 11, 12));
+						u.Complete();
+					}
+				}
+
+				using(var c = new Cursor(OrderLine))
+				{
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 2025);
+						u.Set(OrderLineSeq, 0);
+						u.Set(OrderLineDesc, "Silver hammer with claw");
+						u.Set(OrderLineAmount, 1495);
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 2025);
+						u.Set(OrderLineSeq, 1);
+						u.Set(OrderLineDesc, "Galvanized nails x100");
+						u.Set(OrderLineAmount, 350);
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 2025);
+						u.Set(OrderLineSeq, 2);
+						u.Set(OrderLineDesc, "3mm staples x80");
+						u.Set(OrderLineAmount, 200);
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 2027);
+						u.Set(OrderLineSeq, 0);
+						u.Set(OrderLineDesc, "Corner support 3x5");
+						u.Set(OrderLineAmount, 85);
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 3063);
+						u.Set(OrderLineSeq, 0);
+						u.Set(OrderLineDesc, "RG37 100ft");
+						u.Set(OrderLineAmount, 4535);
+						u.Complete();
+					}
+					using(var u = c.BeginInsert())
+					{
+						u.Set(OrderLineOrder, 3095);
+						u.Set(OrderLineSeq, 0);
+						u.Set(OrderLineDesc, "Vulcanized nails x100");
+						u.Set(OrderLineAmount, 35);
+						u.Complete();
+					}
+				}
+
+				tr.Commit();
+			}
+		}
+
+		public void Dispose()
+		{
+			Order.Dispose();
+			Customer.Dispose();
+			OrderLine.Dispose();
+		}
+	}
+}
