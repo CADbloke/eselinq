@@ -404,6 +404,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Bridge.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Column.hpp"
 				>
 			</File>

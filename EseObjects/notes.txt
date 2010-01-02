@@ -1,3 +1,1 @@
--Make sure empty strings (and arrays) are handled properly-- they are different from NULL. See also JET_bitKeyDataZeroLength in JetMakeKey
--Determine CreateTable failure conditions
 -Create spin-delegate versions for running a transaction and an update.
