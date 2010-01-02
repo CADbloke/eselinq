@@ -40,17 +40,26 @@ public ref class Database
 
 internal:
 	JET_DBID _JetDbid;
+	Bridge ^_Bridge;
 
 private:
 	Database(Session ^Session, String ^DatabaseName, JET_DBID JetDbid) :
 		_Session(Session),
 		_DatabaseName(DatabaseName),
-		_JetDbid(JetDbid)
+		_JetDbid(JetDbid),
+		_Bridge(Session->_Bridge)
+	{}
+
+	Database(String ^DatabaseName) :
+		_Session(nullptr),
+		_DatabaseName(DatabaseName),
+		_JetDbid(null),
+		_Bridge(GetDefaultBridge())
 	{}
 
 public:
 	///<summary>Placeholder Databse object representing the temp database.</summary>
-	static Database ^TempDatabase = gcnew Database(nullptr, "<Temp>", null);
+	static Database ^TempDatabase = gcnew Database("<Temp>");
 
 	value struct CreateOptions
 	{
@@ -132,7 +141,8 @@ public:
 	Database(Session ^Session, String ^DatabaseName) :
 		_Session(Session),
 		_DatabaseName(DatabaseName),
-		_JetDbid(null)
+		_JetDbid(null),
+		_Bridge(Session->_Bridge)
 	{
 		marshal_context mc;
 		char const *NameChar = mc.marshal_as<char const *>(DatabaseName);
@@ -147,7 +157,8 @@ public:
 	Database(Session ^Session, String ^DatabaseName, OpenOptions Opts) :
 		_Session(Session),
 		_DatabaseName(DatabaseName),
-		_JetDbid(null)
+		_JetDbid(null),
+		_Bridge(Session->_Bridge)
 	{
 		marshal_context mc;
 		char const *NameChar = mc.marshal_as<char const *>(DatabaseName);
@@ -317,4 +328,9 @@ public:
 		}
 	}
 
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
+	};
 };

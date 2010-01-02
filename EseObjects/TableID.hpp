@@ -37,12 +37,14 @@ internal:
 private:
 	Transaction ^_Trans;
 	Database ^_Db;
+	Bridge ^_Bridge;
 
 internal:
 	TableID(JET_TABLEID JetTableID, Transaction ^Trans, Database ^Db) :
 		_JetTableID(JetTableID),
 		_Trans(Trans),
-		_Db(Db)
+		_Db(Db),
+		_Bridge(Db->_Bridge)
 	{}
 
 	void CheckValidity()
@@ -108,4 +110,10 @@ internal:
 	{
 		EseObjects::Database ^get() {return _Db;}
 	}
+
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
+	};
 };

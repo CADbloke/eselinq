@@ -47,7 +47,7 @@ internal:
 			delete[] _JetKey;
 	}
 
-	static void LoadFieldIntoTableID(JET_SESID sesid, JET_TABLEID tabid, Column ^Col, Object ^Val, JET_GRBIT flags)
+	static void LoadFieldIntoTableID(JET_SESID sesid, JET_TABLEID tabid, Bridge ^Bridge, Column ^Col, Object ^Val, JET_GRBIT flags)
 	{
 		free_list fl;
 		marshal_context mc;
@@ -55,12 +55,12 @@ internal:
 		ulong data_len;
 		bool empty;
 
-		to_memblock(Val, data, data_len, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+		to_memblock_bridge(Bridge, Val, data, data_len, empty, Col->_JetColTyp, Col->_CP, mc, fl);
 
 		EseException::RaiseOnError(JetMakeKey(sesid, tabid, data, data_len, flags | (empty ? JET_bitKeyDataZeroLength : 0)));
 	}
 
-	static void LoadFieldsIntoTableID(JET_SESID sesid, JET_TABLEID tabid, IEnumerable<Field> ^KeyFields, JET_GRBIT final_grbit)
+	static void LoadFieldsIntoTableID(JET_SESID sesid, JET_TABLEID tabid, Bridge ^Bridge, IEnumerable<Field> ^KeyFields, JET_GRBIT final_grbit)
 	{
 		bool last = false, first = true;
 
@@ -72,7 +72,7 @@ internal:
 			Field current = e->Current;
 			last = !e->MoveNext();
 
-			LoadFieldIntoTableID(sesid, tabid, current.Col, current.Val, (first ? JET_bitNewKey : 0) | (last ? final_grbit : 0));
+			LoadFieldIntoTableID(sesid, tabid, Bridge, current.Col, current.Val, (first ? JET_bitNewKey : 0) | (last ? final_grbit : 0));
 		
 			first = false;
 		}
@@ -133,8 +133,9 @@ public:
 	{
 		JET_SESID sesid = GetCurosrSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
+		Bridge ^bridge = GetCursorBridge(Csr);
 
-		LoadFieldsIntoTableID(sesid, tabid, KeyFields, 0);
+		LoadFieldsIntoTableID(sesid, tabid, bridge, KeyFields, 0);
 		GetBytesFromTableID(sesid, tabid, JET_bitRetrieveCopy);
 	}
 
@@ -145,8 +146,9 @@ public:
 	{
 		JET_SESID sesid = GetTableSesid(Tab);
 		JET_TABLEID tabid = GetTableTableID(Tab);
+		Bridge ^bridge = GetTableBridge(Tab);
 
-		LoadFieldsIntoTableID(sesid, tabid, KeyFields, 0);
+		LoadFieldsIntoTableID(sesid, tabid, bridge, KeyFields, 0);
 		GetBytesFromTableID(sesid, tabid, JET_bitRetrieveCopy); //JET_bitRetrieveCopy retrieves copy from current constructed key
 	}
 
@@ -158,8 +160,9 @@ public:
 	{
 		JET_SESID sesid = GetCurosrSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
+		Bridge ^bridge = GetCursorBridge(Csr);
 
-		LoadFieldsIntoTableID(sesid, tabid, KeyFields, MatchToGrbit(MatchMode));
+		LoadFieldsIntoTableID(sesid, tabid, bridge, KeyFields, MatchToGrbit(MatchMode));
 		GetBytesFromTableID(sesid, tabid, JET_bitRetrieveCopy); 
 	}
 
@@ -170,8 +173,9 @@ public:
 	{
 		JET_SESID sesid = GetTableSesid(Tab);
 		JET_TABLEID tabid = GetTableTableID(Tab);
+		Bridge ^bridge = GetTableBridge(Tab);
 
-		LoadFieldsIntoTableID(sesid, tabid, KeyFields, MatchToGrbit(MatchMode));
+		LoadFieldsIntoTableID(sesid, tabid, bridge, KeyFields, MatchToGrbit(MatchMode));
 		GetBytesFromTableID(sesid, tabid, JET_bitRetrieveCopy); 
 	}
 

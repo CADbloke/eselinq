@@ -432,10 +432,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\FieldDataConversion.hpp"
-				>
-			</File>
-			<File
 				RelativePath=".\ForwardReferences.hpp"
 				>
 			</File>
@@ -464,6 +460,10 @@
 						Name="VCCustomBuildTool"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\InternalBridgeFunctions.hpp"
+				>
 			</File>
 			<File
 				RelativePath=".\JetHeaderSupplement.h"

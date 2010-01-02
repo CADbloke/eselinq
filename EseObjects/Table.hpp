@@ -288,7 +288,7 @@ private:
 				bool empty;
 
 				if(NewCol.DefaultValue)
-					to_memblock(NewCol.DefaultValue, jccs[i].pvDefault, jccs[i].cbDefault, empty, jccs[i].coltyp, static_cast<ushort>(jccs[i].cp), mc, fl);
+					to_memblock_bridge(Db->Bridge, NewCol.DefaultValue, jccs[i].pvDefault, jccs[i].cbDefault, empty, jccs[i].coltyp, static_cast<ushort>(jccs[i].cp), mc, fl);
 				else
 				{
 					jccs[i].pvDefault = null;
@@ -583,6 +583,12 @@ public:
 		EseObjects::Database ^get() {return _TableID->Database;}
 	}
 
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _TableID->Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_TableID->Bridge = bridge;};
+	};
+
 internal:
 	property EseObjects::TableID ^TableID
 	{
@@ -757,4 +763,9 @@ JET_SESID GetTableSesid(Table ^Tab)
 TableID ^GetTableIDObj(Table ^Tab)
 {
 	return Tab->TableID;
+}
+
+Bridge ^GetTableBridge(Table ^Tab)
+{
+	return Tab->Bridge;
 }

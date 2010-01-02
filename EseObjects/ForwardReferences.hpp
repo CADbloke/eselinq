@@ -29,18 +29,25 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+ref class Session;
+ref class Database;
 ref class TableID;
 ref class Table;
 ref class Cursor;
 ref class Column;
 ref class Key;
+ref struct Bridge;
 
 JET_TABLEID GetTableTableID(Table ^Tab);
 JET_SESID GetTableSesid(Table ^Tab);
 TableID ^GetTableIDObj(Table ^Tab);
+Bridge ^GetTableBridge(Table ^Tab);
 
 JET_TABLEID GetCursorTableID(Cursor ^Csr);
 JET_SESID GetCurosrSesid(Cursor ^Csr);
+Bridge ^GetCursorBridge(Cursor ^Csr);
+
+Bridge ^GetDefaultBridge();
 
 ///<summary>Extra options for Unicode mapping. Represents JET_UNICODEINDEX.dwMapFlags. See Win32 LCMapMapString for option details. LCMAP_SORTKEY must always be included.</summary>
 public value struct UnicodeMapFlags
@@ -98,4 +105,27 @@ public value struct Field
 		Col(Col),
 		Val(Val)
 	{}
+};
+
+///<summary>Subset of Cursor methods and properties for safe readonly access to a single row. See Cursor for descriptions.</summary>
+public interface struct ReadRecord
+{
+	property EseObjects::Session ^Session{EseObjects::Session ^get();}
+	property EseObjects::Database ^Database{EseObjects::Database ^get();}
+	generic <class T> T Retrieve(Column ^Col, ulong SizeHint);
+	generic <class T> T Retrieve(Column ^Col);
+	ulong RetrieveIndexTagSequence(Column ^Col);
+	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
+	generic <class T> array<T> ^RetrieveAllValues(Column ^Col);
+	array<Field> ^RetreiveAllFields(ulong SizeLimit);
+	array<Field> ^RetreiveAllFields();
+};
+
+public interface struct WriteRecord : ReadRecord
+{
+	property bool AppendLV {bool get(); void set(bool);}
+	property bool OverwriteLV {bool get(); void set(bool);}
+	property ulong OffsetLV {ulong get(); void set(ulong);}
+	property ulong TagSequence {ulong get(); void set(ulong);}
+	void Set(Column ^Col, Object ^Value);
 };

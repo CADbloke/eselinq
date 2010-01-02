@@ -31,20 +31,6 @@
 
 DemandLoadFunction<JET_ERR (JET_API *)(JET_SESID sesid, JET_TABLEID tableid, JET_RECSIZE *precsize, JET_GRBIT const grbit)> JetGetRecordSize_demand(L"esent.dll", "JetGetRecordSize");
 
-///<summary>Subset of Cursor methods and properties for safe readonly access to a single row. See Cursor for descriptions.</summary>
-public interface struct ReadRecord
-{
-	property EseObjects::Session ^Session{EseObjects::Session ^get();}
-	property EseObjects::Database ^Database{EseObjects::Database ^get();}
-	generic <class T> T Retrieve(Column ^Col, ulong SizeHint);
-	generic <class T> T Retrieve(Column ^Col);
-	ulong RetrieveIndexTagSequence(Column ^Col);
-	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
-	generic <class T> array<T> ^RetrieveAllValues(Column ^Col);
-	array<Field> ^RetreiveAllFields(ulong SizeLimit);
-	array<Field> ^RetreiveAllFields();
-};
-
 ///<summary>Represents an open cursor in the database</summary>
 public ref class Cursor sealed : ReadRecord
 {
@@ -89,6 +75,12 @@ public:
 	{
 		EseObjects::Database ^get() {return _TableID->Database;}
 	}
+
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _TableID->Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_TableID->Bridge = bridge;};
+	};
 
 	//move options
 	///<summary>When moving the cursor, moves the specified number of equal index elements instead of records. Controls use of JET_bitMoveKeyNE with Move</summary>
@@ -222,7 +214,7 @@ internal:
 			break;
 
 		case JET_wrnColumnNull:
-			return nullptr;
+			return T();
 
 		default:
 			//if it was some other error, raise it
@@ -230,7 +222,7 @@ internal:
 			break;
 		}
 
-		return from_memblock_generic<T>(buff, req_buffsz, coltyp, cp);
+		return Bridge->ValueBytesToObject<T>(buff, req_buffsz, safe_cast<Column::Type>(coltyp), cp);
 	}
 
 public:
@@ -319,7 +311,7 @@ public:
 			array<T> ^Values = gcnew array<T>(jec->cEnumColumnValue);
 
 			for(ulong i = 0; i < jec->cEnumColumnValue; i++)
-				Values[i] = from_memblock_generic<T>(jec->rgEnumColumnValue[i].pvData, jec->rgEnumColumnValue[i].cbData, Col->_JetColTyp, Col->_CP);
+				Values[i] = Bridge->ValueBytesToObject<T>(jec->rgEnumColumnValue[i].pvData, jec->rgEnumColumnValue[i].cbData, Col->ColumnType, Col->_CP);
 
 			return Values;
 		}
@@ -363,15 +355,15 @@ public:
 
 				//different structure layout depending if the column had more than one value
 				if(jec[i].err == JET_wrnColumnSingleValue)
-					Fields[i].Val = from_memblock(jec[i].pvData, jec[i].cbData, Col->_JetColTyp, Col->_CP);
+					Fields[i].Val = Bridge->ValueBytesToObject<Object ^>(jec[i].pvData, jec[i].cbData, Col->ColumnType, Col->_CP);
 				else
 				{
 					array<Object ^> ^Values = gcnew array<Object ^>(jec[i].cEnumColumnValue);
 
 					for(ulong j = 0; j < jec[i].cEnumColumnValue; j++)
-						Values[j] = from_memblock(jec[i].rgEnumColumnValue[j].pvData, jec[i].rgEnumColumnValue[j].cbData, Col->_JetColTyp, Col->_CP);
+						Values[j] = Bridge->ValueBytesToObject<Object ^>(jec[i].rgEnumColumnValue[j].pvData, jec[i].rgEnumColumnValue[j].cbData, Col->ColumnType, Col->_CP);
 
-					Fields[i].Val = Values;
+					Fields[i].Val = Bridge->MultivalueToObject(Values);
 				}
 			}
 
@@ -581,7 +573,7 @@ public:
 			ulong buffsz = 0;
 			bool empty;
 
-			to_memblock(Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
 
 			JET_GRBIT flags = FlagsToBits();
 			JET_SETINFO si = {sizeof si};
@@ -747,7 +739,7 @@ internal:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldsIntoTableID(sesid, tabid, KeyFields, grbit);
+		Key::LoadFieldsIntoTableID(sesid, tabid, Bridge, KeyFields, grbit);
 	}
 
 	bool SetIxRange(JET_GRBIT grbit)
@@ -791,7 +783,7 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
 		
 		bool has_currency, not_exact;		
 		Seek(JET_bitSeekEQ, has_currency, not_exact);
@@ -803,7 +795,7 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey | MatchToGrbit(MatchMode));
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey | MatchToGrbit(MatchMode));
 
 		bool has_currency, not_exact;
 		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
@@ -816,8 +808,8 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, 0);
 		
 		bool has_currency, not_exact;		
 		Seek(JET_bitSeekEQ, has_currency, not_exact);
@@ -829,8 +821,8 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, MatchToGrbit(MatchMode));
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, MatchToGrbit(MatchMode));
 
 		bool has_currency, not_exact;
 		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
@@ -843,9 +835,9 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C3, K3, 0);
 		
 		bool has_currency, not_exact;		
 		Seek(JET_bitSeekEQ, has_currency, not_exact);
@@ -857,9 +849,9 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, MatchToGrbit(MatchMode));
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C3, K3, MatchToGrbit(MatchMode));
 
 		bool has_currency, not_exact;
 		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
@@ -872,10 +864,10 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C4, K4, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C3, K3, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C4, K4, 0);
 		
 		bool has_currency, not_exact;		
 		Seek(JET_bitSeekEQ, has_currency, not_exact);
@@ -887,10 +879,10 @@ public:
 		JET_SESID sesid = Session->_JetSesid;
 		JET_TABLEID tabid = _TableID->_JetTableID;
 
-		Key::LoadFieldIntoTableID(sesid, tabid, C1, K1, JET_bitNewKey);
-		Key::LoadFieldIntoTableID(sesid, tabid, C2, K2, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C3, K3, 0);
-		Key::LoadFieldIntoTableID(sesid, tabid, C4, K4, MatchToGrbit(MatchMode));
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C1, K1, JET_bitNewKey);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C2, K2, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C3, K3, 0);
+		Key::LoadFieldIntoTableID(sesid, tabid, Bridge, C4, K4, MatchToGrbit(MatchMode));
 
 		bool has_currency, not_exact;
 		Seek(SeekRelToGrbit(Rel), has_currency, not_exact);
@@ -1388,4 +1380,9 @@ JET_TABLEID GetCursorTableID(Cursor ^Csr)
 JET_SESID GetCurosrSesid(Cursor ^Csr)
 {
 	return Csr->Session->_JetSesid;
+}
+
+Bridge ^GetCursorBridge(Cursor ^Csr)
+{
+	return Csr->Bridge;
 }

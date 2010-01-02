@@ -55,6 +55,7 @@ public:
 internal:
 	JET_INSTANCE _JetInstance;
 	InstanceState _State;
+	Bridge ^_Bridge;
 
 public:
 	initonly ushort VersionMajor;
@@ -72,7 +73,8 @@ public:
 		VersionMajor(GetEseVersionMajor()),
 		VersionMinor(GetEseVersionMinor()),
 		VersionBuild1(GetEseVersionBuild1()),
-		VersionBuild2(GetEseVersionBuild2())
+		VersionBuild2(GetEseVersionBuild2()),
+		_Bridge(GetDefaultBridge())
 	{}
 
 	~Instance()
@@ -241,6 +243,12 @@ public:
 	}
 
 	//NEXT:support JetInit3 with its extra recovery options. Needs callbacks
+
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
+	};
 
 //
 // System Parameters

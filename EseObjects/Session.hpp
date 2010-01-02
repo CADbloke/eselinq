@@ -37,6 +37,7 @@ internal:
 	Instance ^_Instance;
 	JET_SESID _JetSesid;
 	Transaction ^_CurrentTrans;
+	Bridge ^_Bridge;
 
 private:
 	static JET_SESID BeginSession(JET_INSTANCE JetInstance)
@@ -56,7 +57,8 @@ private:
 public:
 	Session(Instance ^Instance) :
 		_Instance(Instance),
-		_JetSesid(BeginSession(Instance->_JetInstance))
+		_JetSesid(BeginSession(Instance->_JetInstance)),
+		_Bridge(Instance->_Bridge)
 	{}
 
 	~Session()
@@ -101,6 +103,12 @@ public:
 	{
 		Transaction ^get() {return _CurrentTrans;}
 	}
+
+	property EseObjects::Bridge ^Bridge
+	{
+		EseObjects::Bridge ^get() {return _Bridge;};
+		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
+	};
 
 internal:
 	void BeginTransaction()
