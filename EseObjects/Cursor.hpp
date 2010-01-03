@@ -32,7 +32,7 @@
 DemandLoadFunction<JET_ERR (JET_API *)(JET_SESID sesid, JET_TABLEID tableid, JET_RECSIZE *precsize, JET_GRBIT const grbit)> JetGetRecordSize_demand(L"esent.dll", "JetGetRecordSize");
 
 ///<summary>Represents an open cursor in the database</summary>
-public ref class Cursor sealed : ReadRecord
+public ref class Cursor sealed : IReadRecord
 {
 	TableID ^_TableID;
 	Index ^_CurrentIndex;
@@ -86,23 +86,6 @@ public:
 	///<summary>When moving the cursor, moves the specified number of equal index elements instead of records. Controls use of JET_bitMoveKeyNE with Move</summary>
 	property bool MoveKeyNE;
 
-	//retrieve options
-	///<summary>Retreive modified value instead of original value.</summary>
-	property bool RetrieveCopy;
-	///<summary>Retrieve value from index without accessing main record if possible. Should not be used with the clustered index. Not compatible with RetrieveFromPrimaryBookmark.</summary>
-	property bool RetrieveFromIndex;
-	///<summary>Retrieve value from main record instead of using the index. Should not be used with the clustered index. Not compatible with RetrieveFromIndex.</summary>
-	property bool RetrieveFromPrimaryBookmark;
-	///<summary>Count null tagged entries in TagSequence. If false, they are skipped.</summary>
-	property bool RetrieveNull;
-	///<summary>Retreive NULL value if the multivalued column has no set records instead of the default value.</summary>
-	property bool RetrieveIgnoreDefault;
-	///<summary>Retrieves tuple segment of index. RetrieveFromIndex must be set.</summary>
-	property bool RetrieveTuple;
-	///<summary>Offset into long value to begin reading.</summary>
-	property ulong RetrieveOffsetLV;
-	///<summary>Sequence number of tagged field to read.</summary>
-	property ulong RetrieveTagSequence;
 
 	//----------------------------Move methods---------------------------------
 
@@ -161,20 +144,7 @@ public:
 
 //---------------------------Field retrieval support methods-------------------
 internal:
-	ulong RetrieveFlags()
-	{
-		ulong flags = 0;
-		flags |= RetrieveCopy * JET_bitRetrieveCopy;
-		flags |= RetrieveFromIndex * JET_bitRetrieveFromIndex;
-		flags |= RetrieveFromPrimaryBookmark * JET_bitRetrieveFromPrimaryBookmark;
-		//flags |= RetrieveTag * JET_bitRetrieveTag; //see RetrieveIndexTagSequence;
-		flags |= RetrieveNull * JET_bitRetrieveNull;
-		flags |= RetrieveIgnoreDefault * JET_bitRetrieveIgnoreDefault;
-		flags |= RetrieveTuple * JET_bitRetrieveLongId;
-		return flags;
-	}
-
-	generic <class T> T Retrieve(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, ulong size_hint, JET_GRBIT flags)
+	generic <class T> T Retrieve(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, JET_GRBIT flags, ulong size_hint, ulong size_limit, ulong RetrieveOffsetLV, ulong RetrieveTagSequence)
 	{
 		free_list fl;
 		void *buff;
@@ -184,8 +154,13 @@ internal:
 		else
 			fl.alloc_array<char>(size_hint);
 
-		ulong buffsz = size_hint;
+		ulong buffsz;
 		ulong req_buffsz = 0;
+
+		if(size_limit)
+			req_buffsz = min(size_hint, size_limit);
+		else
+			buffsz = size_hint;
 
 		JET_RETINFO ret_info = {sizeof ret_info};
 
@@ -205,11 +180,20 @@ internal:
 		case JET_errInvalidBufferSize:
 		case JET_wrnBufferTruncated:
 		case JET_errBufferTooSmall:
+			//can only request up to size limit
+			if(size_limit)
+			{
+				//already at limit?
+				if(buffsz == size_limit) 
+					break; //already retreived full request
+				//still more space to limit, get as much as possible
+				req_buffsz = min(req_buffsz, size_limit);
+			}
 			//buffer needs to be bigger
 			buff = fl.alloc_array<char>(req_buffsz);
 			buffsz = req_buffsz;
 
-			//this one shouldn't fail in a way we can fix here (i.e. buffer too small)
+			//this call shouldn't fail in a way we could have fixed here (i.e. buffer too small)
 			EseException::RaiseOnError(JetRetrieveColumn(Session->_JetSesid, _TableID->_JetTableID, colid, buff, buffsz, &req_buffsz, flags, &ret_info));
 			break;
 
@@ -227,13 +211,14 @@ internal:
 
 public:
 	///<summary>Retrieves the data from the specificd column at the current cursor position.
-	///A SizeHint that accurately covers the amount of data in the field can increase efficency.
-	///Too small a size will still succeed, but it will require two calls to JetRetrieveColumn.
+	///Uses the specified retrieval options.
 	///Calls JetRetrieveColumn.
 	///</summary>
-	generic <class T> virtual T Retrieve(Column ^Col, ulong SizeHint)
+	generic <class T> virtual T Retrieve(Column ^Col, IReadRecord::RetrieveOptions ro)
 	{
-		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, SizeHint, RetrieveFlags());
+		JET_GRBIT flags = RetrieveOptionsFlagsToBits(ro);
+
+		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence);
 	}
 
 	///<summary>Retrieves the data from the specificd column at the current cursor position.
@@ -242,7 +227,7 @@ public:
 	///</summary>
 	generic <class T> virtual T Retrieve(Column ^Col)
 	{
-		return Retrieve<T>(Col, ESEOBJECTS_MAX_ALLOCA);
+		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1);
 	}
 
 	///<summary>
@@ -460,7 +445,7 @@ public:
 	//NEXT: use of columnidNextTagged
 
 	///<summary>Represents one update session of a record, bracketed by JetPrepareUpdate and either JetUpdate on Update to save or JetPrepareUpdate with JET_prepCancel on Cancel or Dispose without Update.</summary>
-	ref class Update : WriteRecord
+	ref class Update : IWriteRecord
 	{
 		Cursor ^_Cursor;
 		bool Active;
@@ -542,25 +527,6 @@ public:
 				Cancel();
 		}
 
-		///<summary>Append to the end of a long value (instead of overwriting a section).</summary>
-		property bool AppendLV;
-		///<summary>Overwrite entire long value (instead of overwriting a section).</summary>
-		property bool OverwriteLV;
-		///<summary>Byte offset into long value to set data.</summary>
-		property ulong OffsetLV;
-		///<summary>Tag sequence to modify in a tagged column. Zero appends a new value to the end.</summary>
-		property ulong TagSequence;
-
-	private:
-		JET_GRBIT FlagsToBits()
-		{
-			JET_GRBIT flags = 0;
-			flags |= AppendLV * JET_bitSetAppendLV;
-			flags |= OverwriteLV * JET_bitSetOverwriteLV;
-			return flags;
-		}
-
-	public:
 		///<summary>Modifies the value of a particular column.</summary>
 		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
 		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy is set on the cursor.
@@ -575,26 +541,42 @@ public:
 
 			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
 
-			JET_GRBIT flags = FlagsToBits();
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, Col->_JetColID, buff, buffsz, empty ? JET_bitSetZeroLength : 0, null));
+		}
+
+		virtual void Set(Column ^Col, Object ^Value, IWriteRecord::SetOptions so)
+		{
+			free_list fl;
+			marshal_context mc;
+			void *buff = null;
+			ulong buffsz = 0;
+			bool empty;
+
+			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+
+			JET_GRBIT flags = SetOptionsFlagsToBits(so);
 			JET_SETINFO si = {sizeof si};
-			si.ibLongValue = OffsetLV;
-			si.itagSequence = TagSequence;
+			si.ibLongValue = so.OffsetLV;
+			si.itagSequence = so.TagSequence;
 
 			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, Col->_JetColID, buff, buffsz, flags | (empty ? JET_bitSetZeroLength : 0), &si));
 		}
+
 		//NEXT: JetSetColumns to set multiple columns?
 
 		///<summary>Provides access to read the record being updated.</summary>
-		virtual property ReadRecord ^Read
+		virtual property IReadRecord ^Read
 		{
-			ReadRecord ^get() {return _Cursor;}
+			IReadRecord ^get() {return _Cursor;}
 		}
 
-		generic <class T> T Retrieve(Column ^Col, ulong SizeHint)
+		///<summary>Shortcut to read fields from the current record.</summary>
+		generic <class T> T Retrieve(Column ^Col, IReadRecord::RetrieveOptions ro)
 		{
-			return _Cursor->Retrieve<T>(Col, SizeHint);
+			return _Cursor->Retrieve<T>(Col, ro);
 		}
 
+		///<summary>Shortcut to read fields from the current record.</summary>
 		generic <class T> T Retrieve(Column ^Col)
 		{
 			return _Cursor->Retrieve<T>(Col);
@@ -994,9 +976,7 @@ public:
 	//---------------------------Index support-------------------------------------
 
 	///<summary>Controls the currently selected index.</summary>
-	///<remarks>When setting the property, the corresponding entry in the index is used if possible, otherwise the first item is selected.
-	///<pr/>Tag sequence to seek within a multivalued key is taken from RetrieveTagSequence (only applicable if a record is current).
-	///</remarks>
+	///<remarks>When setting the property, the corresponding entry in the index is used if possible, otherwise the first item is selected.</remarks>
 	property Index ^CurrentIndex
 	{
 		Index ^get() {return _CurrentIndex;}
@@ -1011,7 +991,7 @@ public:
 			{
 				loop_limit--;
 
-				JET_ERR status = JetSetCurrentIndex4(Session->_JetSesid, TableID->_JetTableID, null, newIndex->_JetIndexID, mode, RetrieveTagSequence);
+				JET_ERR status = JetSetCurrentIndex4(Session->_JetSesid, TableID->_JetTableID, null, newIndex->_JetIndexID, mode, 0);
 
 				switch(status)
 				{
@@ -1063,12 +1043,10 @@ public:
 	}
 
 	///<summary>Selects the specified index, moving to the corresponding record in the index. Calls JetSetCurrentIndex4.</summary>
-	///<remarks>If the index doesn't have a corresponding record, the call fails.
-	///<pr/>Tag sequence to seek within a multivalued key is taken from RetrieveTagSequence.
-	///</remarks>
+	///<remarks>If the index doesn't have a corresponding record, the call fails.</remarks>
 	void SetIndexCorresponding(Index ^newIndex)
 	{
-		SetIndexCorresponding(newIndex, RetrieveTagSequence);
+		SetIndexCorresponding(newIndex, 0);
 	}
 
 	///<summary>Selects the specified index, moving to the first record in the index. Calls JetSetCurrentIndex4.</summary>

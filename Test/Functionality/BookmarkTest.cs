@@ -99,8 +99,8 @@ namespace Test.Functionality
 							order.Seek(td.OrderID, order_line.Retrieve<int>(td.OrderLineOrder));
 							using(var u = order.BeginReplace())
 							{
-								u.TagSequence = 0; //with u.TagSequence = 0, will append tagged value
-								u.Set(Lines, new Bookmark(order_line).ToByteArray());
+								IWriteRecord.SetOptions so = new IWriteRecord.SetOptions {TagSequence = 0};
+								u.Set(Lines, new Bookmark(order_line).ToByteArray(), so);
 								u.Complete();
 							}
 							has_current = order_line.Move(1);

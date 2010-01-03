@@ -37,6 +37,8 @@ ref class Cursor;
 ref class Column;
 ref class Key;
 ref struct Bridge;
+interface struct ReadRecord;
+interface struct WriteRecord;
 
 JET_TABLEID GetTableTableID(Table ^Tab);
 JET_SESID GetTableSesid(Table ^Tab);
@@ -108,21 +110,88 @@ public value struct Field
 };
 
 ///<summary>Subset of Cursor methods and properties for safe readonly access to a single row. See Cursor for descriptions.</summary>
-public interface struct ReadRecord
+public interface struct IReadRecord
 {
+	value struct RetrieveOptions
+	{
+		///<summary>A SizeHint that accurately covers the amount of data in the field can increase efficency.
+		///Too small a size will still succeed, but it will require two calls to JetRetrieveColumn.
+		///Zero uses a default size suitable for small values.
+		///Excessively large values will increase temporary memory usage.
+		///</summary>
+		ulong SizeHint;
+		///<summary>The maximum number of bytes to be returned. Certain column types must be fully retrieved.
+		///Suggested for use with long values.
+		///0 implies no limit.
+		///</summary>
+		ulong SizeLimit;
+		///<summary>Retreive modified value instead of original value.</summary>
+		bool RetrieveCopy;
+		///<summary>Retrieve value from index without accessing main record if possible. Should not be used with the clustered index. Not compatible with RetrieveFromPrimaryBookmark.</summary>
+		bool RetrieveFromIndex;
+		///<summary>Retrieve value from main record instead of using the index. Should not be used with the clustered index. Not compatible with RetrieveFromIndex.</summary>
+		bool RetrieveFromPrimaryBookmark;
+		///<summary>Count null tagged entries in TagSequence. If false, they are skipped.</summary>
+		bool RetrieveNull;
+		///<summary>Retreive NULL value if the multivalued column has no set records instead of the default value.</summary>
+		bool RetrieveIgnoreDefault;
+		///<summary>Retrieves tuple segment of index. RetrieveFromIndex must be set.</summary>
+		bool RetrieveTuple;
+		///<summary>Offset into long value to begin reading.</summary>
+		ulong RetrieveOffsetLV;
+		///<summary>Sequence number of tagged field to read.</summary>
+		ulong RetrieveTagSequence;
+	};
+
 	property EseObjects::Session ^Session{EseObjects::Session ^get();}
 	property EseObjects::Database ^Database{EseObjects::Database ^get();}
-	generic <class T> T Retrieve(Column ^Col, ulong SizeHint);
 	generic <class T> T Retrieve(Column ^Col);
+	generic <class T> T Retrieve(Column ^Col, RetrieveOptions ro);
 	ulong RetrieveIndexTagSequence(Column ^Col);
-	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
 	generic <class T> array<T> ^RetrieveAllValues(Column ^Col);
+	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
 	array<Field> ^RetreiveAllFields(ulong SizeLimit);
 	array<Field> ^RetreiveAllFields();
 };
 
-public interface struct WriteRecord
+ulong RetrieveOptionsFlagsToBits(IReadRecord::RetrieveOptions ro)
 {
-	property ReadRecord ^Read {ReadRecord ^get();}
+	ulong flags = 0;
+	flags |= ro.RetrieveCopy * JET_bitRetrieveCopy;
+	flags |= ro.RetrieveFromIndex * JET_bitRetrieveFromIndex;
+	flags |= ro.RetrieveFromPrimaryBookmark * JET_bitRetrieveFromPrimaryBookmark;
+	//flags |= ro.RetrieveTag * JET_bitRetrieveTag; //see RetrieveIndexTagSequence;
+	flags |= ro.RetrieveNull * JET_bitRetrieveNull;
+	flags |= ro.RetrieveIgnoreDefault * JET_bitRetrieveIgnoreDefault;
+	flags |= ro.RetrieveTuple * JET_bitRetrieveLongId;
+	return flags;
+}
+
+///<summary>Subset of Cursor.Update methods and properties for filling in the fields of a single row. See Cursor for descriptions.</summary>
+public interface struct IWriteRecord
+{
+	///<summary>Extra options availabile when setting a value.</summary>
+	value struct SetOptions
+	{
+		///<summary>Append to the end of a long value (instead of overwriting a section).</summary>
+		bool AppendLV;
+		///<summary>Overwrite entire long value (instead of overwriting a section).</summary>
+		bool OverwriteLV;
+		///<summary>Byte offset into long value to set data.</summary>
+		ulong OffsetLV;
+		///<summary>Tag sequence to modify in a tagged column. Zero appends a new value to the end.</summary>
+		ulong TagSequence;
+	};
+
+	property IReadRecord ^Read {IReadRecord ^get();}
 	void Set(Column ^Col, Object ^Value);
+	void Set(Column ^Col, Object ^Value, SetOptions so);
 };
+
+JET_GRBIT SetOptionsFlagsToBits(IWriteRecord::SetOptions so)
+{
+	JET_GRBIT flags = 0;
+	flags |= so.AppendLV * JET_bitSetAppendLV;
+	flags |= so.OverwriteLV * JET_bitSetOverwriteLV;
+	return flags;
+}

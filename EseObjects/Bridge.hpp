@@ -158,14 +158,14 @@ public ref struct Bridge
 		return values;
 	}
 
-	///<summary>Creates an object from the data in the current row, represented by ReadRecord.</summary>
-	generic <class T> virtual T RowToObject(ReadRecord ^rr)
+	///<summary>Creates an object from the data in the current row, represented by IReadRecord.</summary>
+	generic <class T> virtual T RowToObject(IReadRecord ^rr)
 	{
 		throw gcnew NotImplementedException();
 	}
 
 	///<summary>Set up to insert a new row from the specified object. Update will be implicitly completed unless an exception is thrown.</summary>
-	virtual void RowInsertFromObject(WriteRecord ^wr, Object ^o)
+	virtual void RowInsertFromObject(IWriteRecord ^wr, Object ^o)
 	{
 		throw gcnew NotImplementedException();
 	}
