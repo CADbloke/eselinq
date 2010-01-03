@@ -203,6 +203,14 @@ template <> DateTime from_memblock(void *buff, ulong max, JET_COLTYP coltyp, ush
 	}
 }
 
+Object ^from_memblock_binserialize(void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
+{
+	System::Runtime::Serialization::Formatters::Binary::BinaryFormatter ^formatter = gcnew System::Runtime::Serialization::Formatters::Binary::BinaryFormatter();
+	System::IO::MemoryStream ^stream = gcnew System::IO::MemoryStream(from_memblock<array<uchar> ^>(buff, max, coltyp, cp));
+	
+	return formatter->Deserialize(stream);
+}
+
 //convert to default
 Object ^from_memblock(void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
 {
@@ -256,7 +264,6 @@ Object ^from_memblock(void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
 		return from_memblock<array<uchar> ^>(buff, max, coltyp, cp);
 	}
 }
-
 
 template <class T, class U> void alloc_and_assign(T t, void *&buff, ulong &max, free_list &fl)
 {
@@ -453,6 +460,14 @@ template <> void to_memblock(DateTime t, void *&buff, ulong &max, bool &empty, J
 	}
 }
 
+void to_memblock_binserialize(Object ^o, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
+{
+	System::Runtime::Serialization::Formatters::Binary::BinaryFormatter ^formatter = gcnew System::Runtime::Serialization::Formatters::Binary::BinaryFormatter();
+	System::IO::MemoryStream ^stream = gcnew System::IO::MemoryStream();
+	formatter->Serialize(stream, o);
+	
+	to_memblock(stream->GetBuffer(), buff, max, empty, coltyp, cp , mc, fl);
+}
 
 //convert from object
 template <> void to_memblock(Object ^o, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
@@ -491,6 +506,8 @@ template <> void to_memblock(Object ^o, void *&buff, ulong &max, bool &empty, JE
 		to_memblock<array<uchar> ^>(safe_cast<array<uchar> ^>(o), buff, max, empty, coltyp, cp, mc, fl);
 	else if(ty == DateTime::typeid)
 		to_memblock<DateTime>(safe_cast<DateTime>(o), buff, max, empty, coltyp, cp, mc, fl);
+	else if(o->GetType()->IsSerializable)
+		to_memblock_binserialize(o, buff, max, empty, coltyp, cp, mc, fl);
 	else
 		throw gcnew InvalidOperationException("Cannot convert column data from type: " + ty->ToString());
 }

@@ -460,7 +460,7 @@ public:
 	//NEXT: use of columnidNextTagged
 
 	///<summary>Represents one update session of a record, bracketed by JetPrepareUpdate and either JetUpdate on Update to save or JetPrepareUpdate with JET_prepCancel on Cancel or Dispose without Update.</summary>
-	ref class Update
+	ref class Update : WriteRecord
 	{
 		Cursor ^_Cursor;
 		bool Active;
@@ -565,7 +565,7 @@ public:
 		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
 		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy is set on the cursor.
 		///</remarks>
-		void Set(Column ^Col, Object ^Value)
+		virtual void Set(Column ^Col, Object ^Value)
 		{
 			free_list fl;
 			marshal_context mc;
@@ -585,7 +585,7 @@ public:
 		//NEXT: JetSetColumns to set multiple columns?
 
 		///<summary>Provides access to read the record being updated.</summary>
-		property ReadRecord ^Read
+		virtual property ReadRecord ^Read
 		{
 			ReadRecord ^get() {return _Cursor;}
 		}

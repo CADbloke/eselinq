@@ -121,11 +121,8 @@ public interface struct ReadRecord
 	array<Field> ^RetreiveAllFields();
 };
 
-public interface struct WriteRecord : ReadRecord
+public interface struct WriteRecord
 {
-	property bool AppendLV {bool get(); void set(bool);}
-	property bool OverwriteLV {bool get(); void set(bool);}
-	property ulong OffsetLV {ulong get(); void set(ulong);}
-	property ulong TagSequence {ulong get(); void set(ulong);}
+	property ReadRecord ^Read {ReadRecord ^get();}
 	void Set(Column ^Col, Object ^Value);
 };

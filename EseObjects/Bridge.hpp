@@ -109,6 +109,8 @@ public ref struct Bridge
 			return safe_cast<T>(from_memblock<DateTime>(bytes, size, jet_coltyp, cp));
 		else if(T::typeid == Object::typeid)
 			return safe_cast<T>(from_memblock(bytes, size, jet_coltyp, cp));
+		else if(T::typeid->IsSerializable)
+			return safe_cast<T>(from_memblock_binserialize(bytes, size, jet_coltyp, cp));
 		else
 			return ValueBytesToObject<T>(IntPtr(bytes), size, coltyp, cp);
 	}
