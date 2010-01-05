@@ -29,6 +29,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+///<summary>Methods of conversion between database and .NET representations of data. Interface likely to change.</summary>
 public ref struct Bridge
 {
 	static void ThrowConversionError()
@@ -46,93 +47,93 @@ public ref struct Bridge
 		throw gcnew InvalidOperationException("Data type conversion not defined from" + coltyp.ToString() + " to " + type->ToString());
 	}
 
-	///<summary>Converts a byte array for the specified type to a managed object. The default implementation raises an invalid type conversion error.</summary>
-	generic <class T> virtual T ValueBytesToObject(array<uchar> ^bytes, Column::Type coltyp, ushort cp)
+	///<summary>Invokes EseObjects default conversions.</summary>
+	///<param name="success">Returns True iff the conversion was successful. The return value is undefined if this value is false.</param>
+	///<param name="type">Provides the System::Type that the data should be converted to. If successful, the returned object is guaranteed to be of the specified type. Use Object's type to retrieve the defaul type based on the column type.</param>
+	///<param name="isnull">True iff the database value is null. If False, bytes may still be 0, in which case the value is empty. The default conversion returns null. Retrieval functions convert null to zeros for value types.</param>
+	///<param name="bytes">Supplies an IntPtr wrapped pointer to the raw data block to be converted.</param>
+	///<param name="size">Size in bytes of the data area at bytes.</param>
+	///<param name="coltyp">ESE column type of the source data.</param>
+	///<param name="cp">Code page, needed for text types. Must be 1252 for ASCII or 1200 for Unicode when specifying a string object type.</param>
+	static Object ^BuiltinValueBytesToObject(bool %success, Type ^type, bool isnull, IntPtr bytes, ulong size, Column::Type coltyp, ushort cp)
 	{
-		ThrowConversionError(T::typeid, coltyp);
-		return T();
+		if(isnull)
+		{
+			success = true;
+			return nullptr;
+		}
+
+		bool inner_success = false; //need reference, have handle reference
+
+		Object ^o = from_memblock(inner_success, type, bytes.ToPointer(), size, System::Convert::ToInt32(coltyp), cp);
+
+		success = inner_success;
+
+		return o;
+	}
+
+	///<summary>Converts a byte array for the specified type to a managed object.</summary>
+	///<remarks>The default implementation raises an invalid type conversion error.</remarks>
+	///<param name="type">Provides the System::Type that the data should be converted to. If successful, the returned object is guaranteed to be of the specified type. Use Object's type to retrieve the defaul type based on the column type.</param>
+	///<param name="isnull">True iff the database value is null. If False, bytes may still be 0, in which case the value is empty. The default conversion returns null. Retrieval functions convert null to zeros for value types.</param>
+	///<param name="bytes">Supplies a byte array containing the raw source data.</param>
+	///<param name="coltyp">ESE column type of the source data.</param>
+	///<param name="cp">Code page, needed for text types. Must be 1252 for ASCII or 1200 for Unicode when specifying a string object type.</param>
+	virtual Object ^ValueBytesToObject(Type ^type, bool isnull, array<uchar> ^bytes, Column::Type coltyp, ushort cp)
+	{
+		ThrowConversionError(type, coltyp);
+		return nullptr;
 	}
 
 	///<summary>Converts an IntPtr to an unmanaged block of raw data from the database to a managed object.</summary>
 	///<remarks>The memory block is not persited after the function returns.
 	///<pr/>Recommended for use with System.Runtime.InteropServices.Marshall.
-	///<pr/>Default implementation calls the byte array version of this method.
+	///<pr/>Default implementation attempts a default conversion, and if it fails calls the byte array version of this function.
 	///</remarks>
-	generic <class T> virtual T ValueBytesToObject(IntPtr bytes, ulong size, Column::Type coltyp, ushort cp)
+	///<param name="type">Provides the System::Type that the data should be converted to. If successful, the returned object is guaranteed to be of the specified type. Use Object's type to retrieve the defaul type based on the column type.</param>
+	///<param name="isnull">True iff the database value is null. If False, bytes may still be 0, in which case the value is empty. The default conversion returns null. Retrieval functions convert null to zeros for value types.</param>
+	///<param name="bytes">Supplies an IntPtr wrapped pointer to the raw data block to be converted.</param>
+	///<param name="size">Size in bytes of the data area at bytes.</param>
+	///<param name="coltyp">ESE column type of the source data.</param>
+	///<param name="cp">Code page, needed for text types. Must be 1252 for ASCII or 1200 for Unicode when specifying a string object type.</param>
+	virtual Object ^ValueBytesToObject(Type ^type, bool isnull, IntPtr bytes, ulong size, Column::Type coltyp, ushort cp)
 	{
-		array<uchar> ^arr = gcnew array<uchar>(size);
-		System::Runtime::InteropServices::Marshal::Copy(bytes, arr, 0, size);
-		return ValueBytesToObject<T>(arr, coltyp, cp);
-	}
+		bool success;
+		Object ^o = BuiltinValueBytesToObject(success, type, isnull, bytes, size, coltyp, cp);
 
-	///<summary>Converts a pointer to an unmanaged block of raw data from the database to a managed object.</summary>
-	///<remarks>The memory block is not persited after the function returns.
-	///<pr/>All of the built in conversions are done through this method.
-	///<pr/>Default implementation passes any unknown types to the IntPtr version of this method.
-	///<pr/>Requested conversions to Object should produce a default type based on the column type. All column types are covered by the default implementation.
-	///</remarks>
-	generic <class T> virtual T ValueBytesToObject(void *bytes, ulong size, Column::Type coltyp, ushort cp)
-	{
-		JET_COLTYP jet_coltyp = System::Convert::ToUInt32(coltyp);
-
-		if(T::typeid == Boolean::typeid)
-			return safe_cast<T>(from_memblock<Boolean>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Byte::typeid)
-			return safe_cast<T>(from_memblock<Byte>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == SByte::typeid)
-			return safe_cast<T>(from_memblock<SByte>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Char::typeid)
-			return safe_cast<T>(from_memblock<Char>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Single::typeid)
-			return safe_cast<T>(from_memblock<Single>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Double::typeid)
-			return safe_cast<T>(from_memblock<Double>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Int16::typeid)
-			return safe_cast<T>(from_memblock<Int16>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Int32::typeid)
-			return safe_cast<T>(from_memblock<Int32>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Int64::typeid)
-			return safe_cast<T>(from_memblock<Int64>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == UInt16::typeid)
-			return safe_cast<T>(from_memblock<UInt16>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == UInt32::typeid)
-			return safe_cast<T>(from_memblock<UInt32>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == UInt64::typeid)
-			return safe_cast<T>(from_memblock<UInt64>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Guid::typeid)
-			return safe_cast<T>(from_memblock<Guid>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == String::typeid)
-			return safe_cast<T>(from_memblock<String ^>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == array<uchar>::typeid)
-			return safe_cast<T>(from_memblock<array<uchar> ^>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == DateTime::typeid)
-			return safe_cast<T>(from_memblock<DateTime>(bytes, size, jet_coltyp, cp));
-		else if(T::typeid == Object::typeid)
-			return safe_cast<T>(from_memblock(bytes, size, jet_coltyp, cp));
-		else if(T::typeid->IsSerializable)
-			return safe_cast<T>(from_memblock_binserialize(bytes, size, jet_coltyp, cp));
+		if(success)
+			return o;
 		else
-			return ValueBytesToObject<T>(IntPtr(bytes), size, coltyp, cp);
+		{
+			array<uchar> ^arr = gcnew array<uchar>(size);
+			System::Runtime::InteropServices::Marshal::Copy(bytes, arr, 0, size);
+			return ValueBytesToObject(type, isnull, arr, coltyp, cp);
+		}
 	}
 
 	///<summary>Retrieves the bytes representing an object.</summary>
 	///<remarks>Note that certain column types have a preset size and it is an error to return a different size in those cases.
 	///<pr/>This is the first object->value conversion method attempted.
+	///<pr/>Set isnull to True to use a null value in the database. This overrides returning null to use the GetValueSize path.
 	///<pr/>Return null to use the ObjectValueSize unmanaged conversion (or the built in conversions, which will occur after that).
 	///<pr/>The default implementation always returns null.
 	///</remarks>
-	virtual array<byte> ^ValueBytesFromObject(Object ^o, Column::Type coltyp, ushort cp)
+	virtual array<byte> ^ValueBytesFromObject(Object ^o, bool %isnull, Column::Type coltyp, ushort cp)
 	{
 		return nullptr;
 	}
 
 	///<summary>Retrieves the size in bytes needed to store the specified object. The specified amount of memory will be allocated for ValueObjectToBytes.</summary>
 	///<remarks>Note that certain column types have a preset size and it is an error to return a different size in those cases.
-	///<pr/>This method is not used for the built in conversions.
+	///<pr/>This method is not used to size builtin conversions; these must use a different method.
 	///<pr/>This method must be implemented to convert values from objects.
+	///<pr/>Set isnull to True if the database value should be set as null (isnull defaults to False).
+	///<pr/>If 0 is returned, ValueBytesFromObject will not be called.
+	///<pr/>Return 0 with isnull = false to set an empty value in the database.
+	///<pr/>Return 0 with isnull = true to set a null value in the database.
 	///<pr/>Return UInt32.MaxValue to attempt a built in conversion. The default implementation always returns UInt32.MaxValue.
 	///</remarks>
-	virtual ulong ObjectValueSize(Object ^o, Column::Type coltyp, ushort cp)
+	virtual ulong ObjectValueSize(Object ^o, bool %isnull, Column::Type coltyp, ushort cp)
 	{
 		return UInt32::MaxValue;
 	}
@@ -215,15 +216,13 @@ Bridge ^GetDefaultBridge()
 
 void to_memblock_bridge(Bridge ^b, Object ^o, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
 {
-	if(o == nullptr)
-	{
-		empty = false;
-		buff = null;
-		max = 0;
-		return;
-	}
+	Column::Type Coltyp = safe_cast<Column::Type>(coltyp);
 
-	array<uchar> ^user_array = b->ValueBytesFromObject(o, safe_cast<Column::Type>(coltyp), cp);
+	bool user_null = false;
+	array<uchar> ^user_array = b->ValueBytesFromObject(o, user_null, safe_cast<Column::Type>(coltyp), cp);
+
+	if(user_null)
+		goto exit_return_null;
 
 	//user byte array availaible
 	if(user_array != nullptr)
@@ -232,25 +231,43 @@ void to_memblock_bridge(Bridge ^b, Object ^o, void *&buff, ulong &max, bool &emp
 		return;
 	}
 
-	ulong user_size = b->ObjectValueSize(o, safe_cast<Column::Type>(coltyp), cp);
+	//try user conversion for type
+	ulong user_size = b->ObjectValueSize(o, user_null, Coltyp, cp);
 
-	//use user conversion for this type
-	if(user_size != UInt32::MaxValue)
+	if(user_null)
+		goto exit_return_null;
+
+	switch(user_size)
 	{
-		if(user_size == 0)
-		{
-			empty = true;
-			buff = null;
-			max = 0;
-			return;
-		}
+	case 0:
+		empty = true;
+		buff = null;
+		max = 0;
+		return;
 
+	case UInt32::MaxValue:
+		break; //continue to builtin conversion
+
+	default:
+		//use user conversion for this type
 		buff = fl.alloc_array_zero<uchar>(user_size);
 		max = user_size;
-		b->ValueBytesFromObject(o, buff, max, safe_cast<Column::Type>(coltyp), cp);
+		b->ValueBytesFromObject(o, buff, max, Coltyp, cp);
 		return;
 	}
 
+	if(o == nullptr)
+		goto exit_return_null;
+
 	//use built in conversion
-	to_memblock(o, buff, max, empty, coltyp, cp, mc, fl);
+	if(!to_memblock(o, buff, max, empty, coltyp, cp, mc, fl))
+		Bridge::ThrowConversionError(Coltyp, o->GetType());
+
+	return;
+
+	//return null value
+exit_return_null:
+		empty = false;
+		buff = null;
+		max = 0;
 }

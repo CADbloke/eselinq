@@ -409,9 +409,9 @@ SortedList<JET_COLUMNID, Column ^> ^QueryTableColumns(JET_SESID JetSesid, JET_TA
 			Column ^Col = gcnew Column
 			(
 				jcd,
-				from_memblock<String ^>(colname, jrc[0].cbActual, JET_coltypText, 1252),
-				from_memblock<String ^>(jcb.szBaseColumnName, jrc[9].cbActual, JET_coltypText, 1252),
-				from_memblock<String ^>(jcb.szBaseTableName, jrc[10].cbActual, JET_coltypText, 1252)
+				astring_from_memblock(colname, jrc[0].cbActual),
+				astring_from_memblock(jcb.szBaseColumnName, jrc[9].cbActual),
+				astring_from_memblock(jcb.szBaseTableName, jrc[10].cbActual)
 			);
 			
 			Cols->Add(jcd.columnid, Col);

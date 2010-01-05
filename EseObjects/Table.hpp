@@ -57,6 +57,7 @@ public ref class Table
 		_TableID->~TableID();
 	}
 
+internal:
 	Table(TableID ^TableID) :
 		_TableID(TableID)
 	{}
@@ -237,7 +238,7 @@ public:
 	}
 
 	///<summary>Opens an existing table with specified options.</summary>
-	Table(Database ^Db,Session ^Session, String ^TableName, OpenOptions ^OpenOptions) :
+	Table(Database ^Db, Session ^Session, String ^TableName, OpenOptions ^OpenOptions) :
 		_TableID(nullptr)
 	{
 		marshal_context mc;
@@ -768,4 +769,9 @@ TableID ^GetTableIDObj(Table ^Tab)
 Bridge ^GetTableBridge(Table ^Tab)
 {
 	return Tab->Bridge;
+}
+
+Table ^MakeTableFromTableID(TableID ^Tabid)
+{
+	return gcnew Table(Tabid);
 }

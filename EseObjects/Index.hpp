@@ -132,7 +132,7 @@ private:
 
 					EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidcolumnname, colname, sizeof colname, &name_len, 0, null));
 
-					_KeyColumns[i].Name = from_memblock<String ^>(colname, name_len, JET_coltypText, 1252);
+					_KeyColumns[i].Name = astring_from_memblock(colname, name_len);
 				}
 				
 				i++;

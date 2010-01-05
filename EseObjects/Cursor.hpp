@@ -66,12 +66,30 @@ public:
 		_TableID->~TableID();
 	}
 
-	virtual property EseObjects::Session ^Session
+	///<summary>Duplicates the current JET_TABLEID and returns a new Table object.</summary>
+	virtual property EseObjects::Table ^Table
+	{
+		EseObjects::Table ^get()
+		{
+			return MakeTableFromTableID(_TableID->Duplicate());
+		}
+	}
+
+	///<summary>Reuses the current JET_TABLEID as a new Table object. By sharing the JET_TABLEID, disposing from either will affect both.</summary>
+	virtual property EseObjects::Table ^AsTable
+	{
+		EseObjects::Table ^get()
+		{
+			return MakeTableFromTableID(_TableID);
+		}
+	}	
+
+	property EseObjects::Session ^Session
 	{
 		EseObjects::Session ^get() {return _TableID->Session;}
 	}
 
-	virtual property EseObjects::Database ^Database
+	property EseObjects::Database ^Database
 	{
 		EseObjects::Database ^get() {return _TableID->Database;}
 	}
@@ -144,7 +162,7 @@ public:
 
 //---------------------------Field retrieval support methods-------------------
 internal:
-	generic <class T> T Retrieve(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, JET_GRBIT flags, ulong size_hint, ulong size_limit, ulong RetrieveOffsetLV, ulong RetrieveTagSequence)
+	Object ^Retrieve(Type ^type, JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, JET_GRBIT flags, ulong size_hint, ulong size_limit, ulong RetrieveOffsetLV, ulong RetrieveTagSequence)
 	{
 		free_list fl;
 		void *buff;
@@ -198,36 +216,54 @@ internal:
 			break;
 
 		case JET_wrnColumnNull:
-			return T();
-
+			return Bridge->ValueBytesToObject(type, true, IntPtr(0), 0, safe_cast<Column::Type>(coltyp), cp);
+			
 		default:
 			//if it was some other error, raise it
 			EseException::RaiseOnError(status);
 			break;
 		}
 
-		return Bridge->ValueBytesToObject<T>(buff, req_buffsz, safe_cast<Column::Type>(coltyp), cp);
+		return Bridge->ValueBytesToObject(type, false, IntPtr(buff), req_buffsz, safe_cast<Column::Type>(coltyp), cp);
 	}
 
 public:
-	///<summary>Retrieves the data from the specificd column at the current cursor position.
+	///<summary>Retrieves the data from the specificd column at the current cursor position. Calls JetRetrieveColumn.
 	///Uses the specified retrieval options.
-	///Calls JetRetrieveColumn.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
 	///</summary>
 	generic <class T> virtual T Retrieve(Column ^Col, IReadRecord::RetrieveOptions ro)
 	{
 		JET_GRBIT flags = RetrieveOptionsFlagsToBits(ro);
 
-		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence);
+		return safe_cast<T>(Retrieve(T::typeid, Col->_JetColID, Col->_JetColTyp, Col->_CP, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence));
 	}
 
-	///<summary>Retrieves the data from the specificd column at the current cursor position.
-	///Uses a default size hint suitable for small values.
-	///Calls JetRetrieveColumn.
+	///<summary>Retrieves the data from the specificd column at the current cursor position. Calls JetRetrieveColumn.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
 	///</summary>
 	generic <class T> virtual T Retrieve(Column ^Col)
 	{
-		return Retrieve<T>(Col->_JetColID, Col->_JetColTyp, Col->_CP, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1);
+		return safe_cast<T>(Retrieve(T::typeid, Col->_JetColID, Col->_JetColTyp, Col->_CP, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1));
+	}
+
+	///<summary>Retrieves the data from the specificd column at the current cursor position. Calls JetRetrieveColumn.
+	///Uses the specified retrieval options.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	virtual Object ^Retrieve(Column ^Col, Type ^Type, IReadRecord::RetrieveOptions ro)
+	{
+		JET_GRBIT flags = RetrieveOptionsFlagsToBits(ro);
+
+		return Retrieve(Type, Col->_JetColID, Col->_JetColTyp, Col->_CP, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence);
+	}
+
+	///<summary>Retrieves the data from the specificd column at the current cursor position. Calls JetRetrieveColumn.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	virtual Object ^Retrieve(Column ^Col, Type ^Type)
+	{
+		return Retrieve(Type, Col->_JetColID, Col->_JetColTyp, Col->_CP, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1);
 	}
 
 	///<summary>
@@ -296,7 +332,53 @@ public:
 			array<T> ^Values = gcnew array<T>(jec->cEnumColumnValue);
 
 			for(ulong i = 0; i < jec->cEnumColumnValue; i++)
-				Values[i] = Bridge->ValueBytesToObject<T>(jec->rgEnumColumnValue[i].pvData, jec->rgEnumColumnValue[i].cbData, Col->ColumnType, Col->_CP);
+				Values[i] = safe_cast<T>(Bridge->ValueBytesToObject(
+					T::typeid,
+					jec->rgEnumColumnValue[i].err == JET_wrnColumnNull,
+					IntPtr(jec->rgEnumColumnValue[i].pvData),
+					jec->rgEnumColumnValue[i].cbData,
+					Col->ColumnType,
+					Col->_CP));
+
+			return Values;
+		}
+		finally
+		{
+			FreeEnumColumn(jec, jec_ct);
+		}
+	}
+
+	///<summary>Retrieves all values of a multivalued field. Calls JetEnumerateColumns. Requires 5.1+.</summary>
+	///<remarks>Also works on single valued columns and fields.</remarks>
+	///<param name="SizeLimit">Maximum size in bytes to return for any one value</param>
+	virtual array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type, ulong SizeLimit)
+	{
+		JET_SESID JetSesid = Session->_JetSesid;
+		JET_TABLEID JetTableID = TableID->_JetTableID;
+
+		JET_ENUMCOLUMNID jeci = {0};
+		jeci.columnid = Col->_JetColID;
+
+		ulong jec_ct = 0;
+		JET_ENUMCOLUMN *jec = null;
+
+		EseException::RaiseOnError(JetEnumerateColumns(JetSesid, JetTableID, 1, &jeci, &jec_ct, &jec, jet_realloc_cpp, null, SizeLimit, 0));
+
+		try
+		{
+			if(jec_ct < 1)
+				throw gcnew ApplicationException("No fields returned");
+
+			array<Object ^> ^Values = gcnew array<Object ^>(jec->cEnumColumnValue);
+
+			for(ulong i = 0; i < jec->cEnumColumnValue; i++)
+				Values[i] = Bridge->ValueBytesToObject(
+					Type,
+					jec->rgEnumColumnValue[i].err == JET_wrnColumnNull,
+					IntPtr(jec->rgEnumColumnValue[i].pvData),
+					jec->rgEnumColumnValue[i].cbData,
+					Col->ColumnType,
+					Col->_CP);
 
 			return Values;
 		}
@@ -311,6 +393,13 @@ public:
 	generic <class T> virtual array<T> ^RetrieveAllValues(Column ^Col)
 	{
 		return RetrieveAllValues<T>(Col, 0);
+	}
+
+	///<summary>Retrieves all values of a multivalued field. Calls JetEnumerateColumns. Requires 5.1+.</summary>
+	///<remarks>Also works on single valued columns and fields.</remarks>
+	virtual array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type)
+	{
+		return RetrieveAllValues(Col, Type, 0);
 	}
 
 	///<summary>Builds an array containing all values in all fields in the row, including all values of mutli valued fields. Calls JetEnumerateColumns. Requires 5.1+.</summary>
@@ -340,13 +429,25 @@ public:
 
 				//different structure layout depending if the column had more than one value
 				if(jec[i].err == JET_wrnColumnSingleValue)
-					Fields[i].Val = Bridge->ValueBytesToObject<Object ^>(jec[i].pvData, jec[i].cbData, Col->ColumnType, Col->_CP);
+					Fields[i].Val = Bridge->ValueBytesToObject(
+						Object::typeid,
+						false,
+						IntPtr(jec[i].pvData),
+						jec[i].cbData,
+						Col->ColumnType,
+						Col->_CP);
 				else
 				{
 					array<Object ^> ^Values = gcnew array<Object ^>(jec[i].cEnumColumnValue);
 
 					for(ulong j = 0; j < jec[i].cEnumColumnValue; j++)
-						Values[j] = Bridge->ValueBytesToObject<Object ^>(jec[i].rgEnumColumnValue[j].pvData, jec[i].rgEnumColumnValue[j].cbData, Col->ColumnType, Col->_CP);
+						Values[j] = Bridge->ValueBytesToObject(
+							Object::typeid,
+							jec[i].err == JET_wrnColumnNull,
+							IntPtr(jec[i].rgEnumColumnValue[j].pvData),
+							jec[i].rgEnumColumnValue[j].cbData,
+							Col->ColumnType,
+							Col->_CP);
 
 					Fields[i].Val = Bridge->MultivalueToObject(Values);
 				}
@@ -527,11 +628,8 @@ public:
 				Cancel();
 		}
 
-		///<summary>Modifies the value of a particular column.</summary>
-		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
-		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy is set on the cursor.
-		///</remarks>
-		virtual void Set(Column ^Col, Object ^Value)
+	private:
+		void Set(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, Object ^Value)
 		{
 			free_list fl;
 			marshal_context mc;
@@ -539,12 +637,12 @@ public:
 			ulong buffsz = 0;
 			bool empty;
 
-			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, coltyp, cp, mc, fl);
 
-			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, Col->_JetColID, buff, buffsz, empty ? JET_bitSetZeroLength : 0, null));
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, colid, buff, buffsz, empty ? JET_bitSetZeroLength : 0, null));
 		}
 
-		virtual void Set(Column ^Col, Object ^Value, IWriteRecord::SetOptions so)
+		void Set(JET_COLUMNID colid, JET_COLTYP coltyp, ushort cp, Object ^Value, IWriteRecord::SetOptions so)
 		{
 			free_list fl;
 			marshal_context mc;
@@ -552,14 +650,33 @@ public:
 			ulong buffsz = 0;
 			bool empty;
 
-			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, Col->_JetColTyp, Col->_CP, mc, fl);
+			to_memblock_bridge(_Cursor->Bridge, Value, buff, buffsz, empty, coltyp, cp, mc, fl);
 
 			JET_GRBIT flags = SetOptionsFlagsToBits(so);
 			JET_SETINFO si = {sizeof si};
 			si.ibLongValue = so.OffsetLV;
 			si.itagSequence = so.TagSequence;
 
-			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, Col->_JetColID, buff, buffsz, flags | (empty ? JET_bitSetZeroLength : 0), &si));
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, colid, buff, buffsz, flags | (empty ? JET_bitSetZeroLength : 0), &si));
+		}
+
+	public:
+		///<summary>Modifies the value of a particular column.</summary>
+		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
+		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy specified as a retrieve option.
+		///</remarks>
+		virtual void Set(Column ^Col, Object ^Value)
+		{
+			Set(Col->_JetColID, Col->_JetColTyp, Col->_CP, Value);
+		}
+
+		///<summary>Modifies the value of a particular column.</summary>
+		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
+		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy specified as a retrieve option.
+		///</remarks>
+		virtual void Set(Column ^Col, Object ^Value, IWriteRecord::SetOptions so)
+		{
+			Set(Col->_JetColID, Col->_JetColTyp, Col->_CP, Value, so);
 		}
 
 		//NEXT: JetSetColumns to set multiple columns?

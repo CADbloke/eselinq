@@ -309,7 +309,7 @@ public:
 
 					EseException::RaiseOnError(JetRetrieveColumn(sesid, jol.tableid, jol.columnidobjectname, name, sizeof name, &buff_req, 0, null));
 
-					Tables[i] = from_memblock<String ^>(name, buff_req, JET_coltypText, 1252);
+					Tables[i] = astring_from_memblock(name, buff_req);
 
 					JET_ERR status = JetMove(sesid, jol.tableid, JET_MoveNext, 0);
 

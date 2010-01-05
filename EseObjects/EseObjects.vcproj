@@ -490,6 +490,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\RowSerialization.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\SecondaryBookmark.hpp"
 				>
 			</File>

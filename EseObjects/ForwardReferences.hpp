@@ -44,6 +44,7 @@ JET_TABLEID GetTableTableID(Table ^Tab);
 JET_SESID GetTableSesid(Table ^Tab);
 TableID ^GetTableIDObj(Table ^Tab);
 Bridge ^GetTableBridge(Table ^Tab);
+Table ^MakeTableFromTableID(TableID ^Tabid);
 
 JET_TABLEID GetCursorTableID(Cursor ^Csr);
 JET_SESID GetCurosrSesid(Cursor ^Csr);
@@ -122,7 +123,7 @@ public interface struct IReadRecord
 		ulong SizeHint;
 		///<summary>The maximum number of bytes to be returned. Certain column types must be fully retrieved.
 		///Suggested for use with long values.
-		///0 implies no limit.
+		///0 imposes no limit.
 		///</summary>
 		ulong SizeLimit;
 		///<summary>Retreive modified value instead of original value.</summary>
@@ -143,13 +144,23 @@ public interface struct IReadRecord
 		ulong RetrieveTagSequence;
 	};
 
-	property EseObjects::Session ^Session{EseObjects::Session ^get();}
-	property EseObjects::Database ^Database{EseObjects::Database ^get();}
+	///<summary>Duplicates the current JET_TABLEID and returns a new Table object.</summary>
+	property EseObjects::Table ^Table{EseObjects::Table ^get();}
+
+	///<summary>Reuses the current JET_TABLEID as a new Table object. By sharing the JET_TABLEID, disposing from either will affect both.</summary>
+	property EseObjects::Table ^AsTable{EseObjects::Table ^get();}
+
 	generic <class T> T Retrieve(Column ^Col);
 	generic <class T> T Retrieve(Column ^Col, RetrieveOptions ro);
-	ulong RetrieveIndexTagSequence(Column ^Col);
 	generic <class T> array<T> ^RetrieveAllValues(Column ^Col);
 	generic <class T> array<T> ^RetrieveAllValues(Column ^Col, ulong SizeLimit);
+
+	Object ^Retrieve(Column ^Col, Type ^Type);
+	Object ^Retrieve(Column ^Col, Type ^Type, RetrieveOptions ro);
+	array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type);
+	array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type, ulong SizeLimit);
+
+	ulong RetrieveIndexTagSequence(Column ^Col);
 	array<Field> ^RetreiveAllFields(ulong SizeLimit);
 	array<Field> ^RetreiveAllFields();
 };
@@ -167,7 +178,7 @@ ulong RetrieveOptionsFlagsToBits(IReadRecord::RetrieveOptions ro)
 	return flags;
 }
 
-///<summary>Subset of Cursor.Update methods and properties for filling in the fields of a single row. See Cursor for descriptions.</summary>
+///<summary>Subset of Cursor.Update methods and properties for filling in the fields of a single row. See Cursor.Update for descriptions.</summary>
 public interface struct IWriteRecord
 {
 	///<summary>Extra options availabile when setting a value.</summary>
