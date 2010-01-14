@@ -74,6 +74,7 @@
     <Compile Include="Functionality\EnumTest.cs" />
     <Compile Include="Functionality\KeyTest.cs" />
     <Compile Include="Functionality\Main.cs" />
+    <Compile Include="Functionality\SerializationTest.cs" />
     <Compile Include="Functionality\TempTable.cs" />
     <Compile Include="Functionality\TestData.cs" />
     <Compile Include="InvalidParams\InvalidCreateTable.cs" />

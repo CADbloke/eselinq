@@ -539,7 +539,7 @@ bool to_memblock_binserialize(Object ^o, void *&buff, ulong &max, bool &empty, J
 	System::IO::MemoryStream ^stream = gcnew System::IO::MemoryStream();
 	formatter->Serialize(stream, o);
 	
-	to_memblock(stream->GetBuffer(), buff, max, empty, coltyp, cp , mc, fl);
+	to_memblock(stream->ToArray(), buff, max, empty, coltyp, cp , mc, fl);
 
 	return true;
 }

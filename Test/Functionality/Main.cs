@@ -78,6 +78,9 @@ namespace Test.Functionality
 					Functionality.EnumTest.DumpContents(sess, d, Console.WriteLine);
 				}
 
+				Console.WriteLine("Serialization test");
+				Functionality.SerializationTest.RunTests(sess, d);
+
 				Console.WriteLine("Invalid create table test");
 				InvalidCreateTable.Test(sess, d);
 			}

@@ -130,7 +130,7 @@ public:
 		///</summary>
 		Text = JET_coltypText,
 		///<summary>Long binary field up to 2147483647 bytes in length. Can be stored out of row and accessed as a stream.</summary>
-		LongBianry = JET_coltypLongBinary,
+		LongBinary = JET_coltypLongBinary,
 		///<summary>Long text field up to 2147483647 bytes in length. Can be stored out of row and accessed as a stream. Same sorting properties as Text.</summary>
 		LongText = JET_coltypLongText,
 		///<summary>Ranging 0 to 4294967295. Requires 6.0+. Equivalent to System.UInt32</summary>

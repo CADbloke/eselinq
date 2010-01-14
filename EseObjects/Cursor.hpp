@@ -449,7 +449,7 @@ public:
 							Col->ColumnType,
 							Col->_CP);
 
-					Fields[i].Val = Bridge->MultivalueToObject(Values);
+					Fields[i].Val = Bridge->MultivalueToObject<array<Object ^> ^>(Values);
 				}
 			}
 
@@ -1458,7 +1458,7 @@ internal:
 		case JET_errRecordDeleted:
 		case JET_errNoCurrentRecord:
 			HasCurrency = false;
-			break;
+			return;
 		}
 
 		EseException::RaiseOnError(status);

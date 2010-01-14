@@ -47,6 +47,11 @@ public ref struct Bridge
 		throw gcnew InvalidOperationException("Data type conversion not defined from" + coltyp.ToString() + " to " + type->ToString());
 	}
 
+	static void ThrowConversionError(System::Type ^type1, System::Type ^type2)
+	{
+		throw gcnew InvalidOperationException("Data type conversion not defined from " + type1->ToString() + " to " + type2->ToString());
+	}
+
 	///<summary>Invokes EseObjects default conversions.</summary>
 	///<param name="success">Returns True iff the conversion was successful. The return value is undefined if this value is false.</param>
 	///<param name="type">Provides the System::Type that the data should be converted to. If successful, the returned object is guaranteed to be of the specified type. Use Object's type to retrieve the defaul type based on the column type.</param>
@@ -154,9 +159,45 @@ public ref struct Bridge
 
 	///<summary>Creates a single object T from an array of multiple values. Each value is retreived using ValueBytesToObject.</summary>
 	///<remarks>Default implementation returns the array of values</remarks>
-	virtual Object ^MultivalueToObject(array<Object ^> ^values)
+	generic <class T> virtual Object ^MultivalueToObject(array<Object ^> ^values)
 	{
 		return values;
+	}
+
+	///<summary>Creates a single object T from an array of multiple values. Each value is retreived using ValueBytesToObject.</summary>
+	///<remarks>Default implementation casts to an array of object, if an array or builds an array if o is an ICollection.</remarks>
+	virtual array<Object ^> ^MultivalueFromObject(Object ^o)
+	{
+		{
+			array<Object ^> ^arr = dynamic_cast<array<Object ^> ^>(o);
+
+			if(arr)
+				return arr;
+		}
+
+		{
+			System::Collections::ICollection ^coll = dynamic_cast<System::Collections::ICollection ^>(o);
+
+			if(coll)
+			{
+				int ecount = coll->Count;
+
+				array<Object ^> ^arr = gcnew array<Object ^>(ecount);
+				
+				System::Collections::IEnumerator ^e = coll->GetEnumerator();
+						
+				for(int i = 0; i < ecount; i++)
+				{
+					arr[i] = e->Current;
+					e->MoveNext();
+				}
+
+				return arr;
+			}
+		}
+
+		ThrowConversionError(o->GetType(), array<Object ^>::typeid);
+		return nullptr;
 	}
 
 	///<summary>Creates an object from the data in the current row, represented by IReadRecord.</summary>

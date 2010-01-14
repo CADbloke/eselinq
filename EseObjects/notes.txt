@@ -1,1 +1,3 @@
 -Create spin-delegate versions for running a transaction and an update.
+-Add Bridge to RetrieveOptions for override
+-Make sure JET_bitSetSizeLV is supported

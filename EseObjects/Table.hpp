@@ -34,10 +34,10 @@ DemandLoadFunction<JET_ERR (JET_API *)(JET_SESID sesid, JET_OPENTEMPORARYTABLE *
 ///<summary>Special version of exception with extra fields explaining element specific errors, if any.</summary>
 public ref struct CreateTableException : EseException
 {
-	initonly array<KeyValuePair<Column::CreateOptions, EseException ^> const> ^SpecificColumnErrors;
-	initonly array<KeyValuePair<Index::CreateOptions, EseException ^> const> ^SpecificIndexErrors;
+	initonly array<EseException ^const> ^SpecificColumnErrors;
+	initonly array<EseException ^const> ^SpecificIndexErrors;
 
-	CreateTableException(JET_ERR Code, array<KeyValuePair<Column::CreateOptions, EseException ^> const> ^SpecificColumnErrors, array<KeyValuePair<Index::CreateOptions, EseException ^> const> ^SpecificIndexErrors) :
+	CreateTableException(JET_ERR Code, array<EseException ^const> ^SpecificColumnErrors, array<EseException ^const> ^SpecificIndexErrors) :
 		EseException(*EseException::CreateFromCode(Code)),
 		SpecificColumnErrors(SpecificColumnErrors),
 		SpecificIndexErrors(SpecificIndexErrors)
@@ -348,31 +348,33 @@ private:
 
 		if(Status < 0) //if an error
 		{
-			array<KeyValuePair<Column::CreateOptions, EseException ^> > ^ColErrs;
-			array<KeyValuePair<Index::CreateOptions, EseException ^> > ^IxErrs;
+			array<EseException ^> ^ColErrs;
+			array<EseException ^> ^IxErrs;
 
 			if(Parameters.Columns && Parameters.Columns->Count > 0)
 			{
-				ColErrs = gcnew array<KeyValuePair<Column::CreateOptions, EseException ^> >(Parameters.Columns->Count);
+				ColErrs = gcnew array<EseException ^>(Parameters.Columns->Count);
 
 				int i = 0;
 
 				for each(Column::CreateOptions %NewCol in Parameters.Columns)
-					ColErrs[i] = KeyValuePair<Column::CreateOptions, EseException ^>(NewCol, EseException::CreateFromCode(jtc.rgcolumncreate[i].err));
-
-				i++;
+				{
+					ColErrs[i] = EseException::CreateFromCode(jtc.rgcolumncreate[i].err);
+					i++;
+				}
 			}
 
 			if(Parameters.Indexes && Parameters.Indexes->Count > 0)
 			{
-				IxErrs = gcnew array<KeyValuePair<Index::CreateOptions, EseException ^> >(Parameters.Indexes->Count);
+				IxErrs = gcnew array<EseException ^>(Parameters.Indexes->Count);
 
 				int i = 0;
 
 				for each(Index::CreateOptions %NewIx in Parameters.Indexes)
-					IxErrs[i] = KeyValuePair<Index::CreateOptions, EseException ^>(NewIx, EseException::CreateFromCode((*jic_ptrs)[i].err));
-
-				i++;
+				{
+					IxErrs[i] = EseException::CreateFromCode((*jic_ptrs)[i].err);
+					i++;
+				}
 			}
 
 			CreateTableException ^OverallError = gcnew CreateTableException(Status, ColErrs, IxErrs);

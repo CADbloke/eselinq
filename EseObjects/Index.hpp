@@ -213,6 +213,7 @@ public:
 		///<summary>Name of the index. See Jet internal naming restrictions.</summary>
 		String ^Name;
 		///<summary>Selects and orders columns to include as key fields. Each key name must be prefixed with + for ascending or - for descending sort.</summary>
+		//TODO: replace with a single dot-delimited string (commas can't be used in Jet names anyway)
 		ICollection<String ^> ^KeyColumns;
 		///<summary>Initial storage density 20-100.</summary>
 		ulong Density;
