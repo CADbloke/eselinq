@@ -164,26 +164,27 @@ namespace Test.Functionality
 				//TODO: make implicit
 				Column[] cols;
 				Index[] ixs;
-				var table = Table.Create(sess, db, new Table.CreateOptions
-				{
-					Name = "FieldSerial",
-					Columns = new Column.CreateOptions[]
-					{
-						new Column.CreateOptions("D", Column.Type.Long),
-						new Column.CreateOptions("E", Column.Type.LongText, Column.CodePage.Unicode),
-						//new Column.CreateOptions("E", Column.Type.LongText, Column.CodePage.English),
-						//new Column.CreateOptions("F", Column.Type.DoubleFloat)
-						new Column.CreateOptions("F", Column.Type.LongBinary),
-						new Column.CreateOptions("xyz,x", Column.Type.Long),
-						new Column.CreateOptions("xyz,y", Column.Type.Text),
-						new Column.CreateOptions("xyz,z", Column.Type.DoubleFloat)
-					},
-					Indexes = new Index.CreateOptions[]
-					{
-						new Index.CreateOptions { Name = "PK", KeyColumns = "+D", Unique = true, Primary = true }
-					}
-				}, out cols, out ixs);
+				//var table = Table.Create(sess, db, new Table.CreateOptions
+				//{
+				//    Name = "FieldSerial",
+				//    Columns = new Column.CreateOptions[]
+				//    {
+				//        new Column.CreateOptions("D", Column.Type.Long),
+				//        new Column.CreateOptions("E", Column.Type.LongText, Column.CodePage.Unicode),
+				//        //new Column.CreateOptions("E", Column.Type.LongText, Column.CodePage.English),
+				//        //new Column.CreateOptions("F", Column.Type.DoubleFloat)
+				//        new Column.CreateOptions("F", Column.Type.LongBinary),
+				//        new Column.CreateOptions("xyz,x", Column.Type.Long),
+				//        new Column.CreateOptions("xyz,y", Column.Type.Text),
+				//        new Column.CreateOptions("xyz,z", Column.Type.DoubleFloat)
+				//    },
+				//    Indexes = new Index.CreateOptions[]
+				//    {
+				//        new Index.CreateOptions { Name = "PK", KeyColumns = "+D", Unique = true, Primary = true }
+				//    }
+				//}, out cols, out ixs);
 
+				var table = Table.Create(sess, db, Flat<DEF>.CreateTableOptionsForFlat(), out cols, out ixs);
 
 				using(var csr = new Cursor(table))
 				{

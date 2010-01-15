@@ -353,8 +353,11 @@ namespace EseLinq.Storage
 
 				return;
 			}
-	
-			cco = new Column.CreateOptions();
+
+			cco = new Column.CreateOptions
+			{
+				Name = ColName
+			};
 
 			if(Attribute.GetCustomAttribute(mi, typeof(FieldMultivaluedAttribute)) != null)
 			{
@@ -371,11 +374,41 @@ namespace EseLinq.Storage
 
 			cco.NotNull = type.IsValueType;
 
+			if(cco.Type == Column.Type.Text || cco.Type == Column.Type.LongText)
+				cco.CP = Column.CodePage.Unicode;
+
 			CreateOpts.Add(cco);
 		}
 
-		public static Table.CreateOptions CreateTableOptionsForFlat(Type type, IDictionary<Type, Column.Type> TypeMap)
+		///<summary>Default dictionary for type conversions. Uses types some only availaible in 6.0+.</summary>
+		public static IDictionary<Type, Column.Type> StandardTypeMap
 		{
+			get
+			{
+				var dict = new Dictionary<Type, Column.Type>();
+				dict.Add(typeof(Boolean), Column.Type.Bit);
+				dict.Add(typeof(Byte), Column.Type.UnsignedByte);
+				dict.Add(typeof(SByte), Column.Type.Short);
+				dict.Add(typeof(Char), Column.Type.Short);
+				dict.Add(typeof(Single), Column.Type.SingleFloat);
+				dict.Add(typeof(Double), Column.Type.DoubleFloat);
+				dict.Add(typeof(Int16), Column.Type.Short);
+				dict.Add(typeof(Int32), Column.Type.Long);
+				dict.Add(typeof(Int64), Column.Type.LongLong);
+				dict.Add(typeof(UInt16), Column.Type.UnsignedShort);
+				dict.Add(typeof(UInt32), Column.Type.UnsignedLong);
+				dict.Add(typeof(Guid), Column.Type.GUID);
+				dict.Add(typeof(String), Column.Type.LongText);
+				dict.Add(typeof(byte[]), Column.Type.LongBinary);
+				dict.Add(typeof(DateTime), Column.Type.DateTime);
+				return dict;
+			}
+		}
+
+		public static Table.CreateOptions CreateTableOptionsForFlat(IDictionary<Type, Column.Type> TypeMap)
+		{
+			Type type = typeof(T);
+
 			Attribute TabNameAtt = Attribute.GetCustomAttribute(type, typeof(TableNameAttribute));
 			string TabName = TabNameAtt != null ?
 				((TableNameAttribute)TabNameAtt).Name :
@@ -421,6 +454,11 @@ namespace EseLinq.Storage
 			}
 
 			return tco;
+		}
+
+		public static Table.CreateOptions CreateTableOptionsForFlat()
+		{
+			return CreateTableOptionsForFlat(StandardTypeMap);
 		}
 	}
 }

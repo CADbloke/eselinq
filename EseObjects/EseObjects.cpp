@@ -70,6 +70,5 @@ size_t const ESEOBJECTS_MAX_ALLOCA = 64;
 #include "SecondaryBookmark.hpp"
 #include "Cursor.hpp"
 #include "Table.hpp"
-#include "RowSerialization.hpp"
 
 }
