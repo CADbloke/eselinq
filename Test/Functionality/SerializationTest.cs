@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using EseObjects;
-using EseObjects.Serialization;
+using EseLinq.Storage;
 
 namespace Test.Functionality
 {
@@ -32,14 +32,14 @@ namespace Test.Functionality
 		#endregion
 	}
 
-	[EseSerialMemberwiseAttribute]
+	[MemberwiseStorageAttribute]
 	struct ABC
 	{
 		public int a;
 		public string b;
 		public double c;
 
-		[EseTableCreateOptionsAttribute]
+		[TableCreateOptionsAttribute]
 		public static readonly Table.CreateOptions TableCreateOptions = new Table.CreateOptions
 		{
 			Name = "FieldSerial",
@@ -51,21 +51,21 @@ namespace Test.Functionality
 			},
 			Indexes = new Index.CreateOptions[]
 			{
-				new Index.CreateOptions { Name = "PK", KeyColumns = new string[] { "+A" }, Unique = true, Primary = true }
+				new Index.CreateOptions { Name = "PK", KeyColumns = "+A", Unique = true, Primary = true }
 			}
 		};
 	}
 
-	[EseSerialMemberwiseAttribute]
-	[EsePrimaryIndex("PK", "+d")]
+	[MemberwiseStorageAttribute]
+	[PrimaryIndex("PK", "+d")]
 	struct DEF
 	{
 		public int d;
-		[EseXmlFieldSerialization]
+		[XmlFieldSerializationAttribute]
 		public string e;
-		[EseBinaryFieldSerialization]
+		[BinaryFieldSerializationAttribute]
 		public double f;
-		[EseExpandField]
+		[ExpandFieldAttribute]
 		public XYZ xyz;
 	}
 
@@ -92,7 +92,7 @@ namespace Test.Functionality
 					},
 					Indexes = new Index.CreateOptions[]
 					{
-						new Index.CreateOptions { Name = "PK", KeyColumns = new string[] { "+K" }, Unique = true, Primary = true }
+						new Index.CreateOptions { Name = "PK", KeyColumns = "+K", Unique = true, Primary = true }
 					}
 				}, out cols, out ixs);
 
@@ -129,37 +129,15 @@ namespace Test.Functionality
 					},
 					Indexes = new Index.CreateOptions[]
 					{
-						new Index.CreateOptions { Name = "PK", KeyColumns = new string[] { "+X" }, Unique = true, Primary = true }
+						new Index.CreateOptions { Name = "PK", KeyColumns = "+X", Unique = true, Primary = true }
 					}
 				}, out cols, out ixs);
-				
-				using(var trans_mod = new Transaction(sess))
-				{
-					var rlm = new EseObjects.Serialization.RecordLevelMemberiwse<XYZ>(FieldSerial);
-
-					using(var csr = new Cursor(FieldSerial))
-					{
-						using(var u = csr.BeginInsert())
-						{
-							rlm.Write(u, a);
-							u.Complete();
-						}
-
-						csr.MoveFirst();
-						b = rlm.Read(csr);
-
-						if(a.x != b.x || a.y != b.y || a.z != b.z)
-							throw new InvalidOperationException();
-					}
-
-					trans_mod.Rollback();
-				}
 
 				using(var trans_mod = new Transaction(sess))
 				{
 					using(var csr = new Cursor(FieldSerial))
 					{
-						var rle = new EseObjects.Serialization.RecordLevelExplicit<XYZ>();
+						var rle = new Flat<XYZ>(FieldSerial);
 
 						using(var u = csr.BeginInsert())
 						{
@@ -202,14 +180,14 @@ namespace Test.Functionality
 					},
 					Indexes = new Index.CreateOptions[]
 					{
-						new Index.CreateOptions { Name = "PK", KeyColumns = new string[] { "+D" }, Unique = true, Primary = true }
+						new Index.CreateOptions { Name = "PK", KeyColumns = "+D", Unique = true, Primary = true }
 					}
 				}, out cols, out ixs);
 
 
 				using(var csr = new Cursor(table))
 				{
-					var srr = new StandardRowSerializer<DEF>(table);
+					var srr = new Flat<DEF>(table);
 					using(var u = csr.BeginInsert())
 					{
 						srr.Write(u, d1);

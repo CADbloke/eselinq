@@ -212,9 +212,8 @@ public:
 	{
 		///<summary>Name of the index. See Jet internal naming restrictions.</summary>
 		String ^Name;
-		///<summary>Selects and orders columns to include as key fields. Each key name must be prefixed with + for ascending or - for descending sort.</summary>
-		//TODO: replace with a single dot-delimited string (commas can't be used in Jet names anyway)
-		ICollection<String ^> ^KeyColumns;
+		///<summary>Selects and orders columns to include as key fields. Separate column names with dots(.). Each key name must be prefixed with + for ascending or - for descending sort.</summary>
+		String ^KeyColumns;
 		///<summary>Initial storage density 20-100.</summary>
 		ulong Density;
 
@@ -264,44 +263,22 @@ public:
 
 		//convenience constructors
 		///<summary>New index struct for secondary index with specified values></summary>
-		static CreateOptions NewPrimary(String ^Name, ICollection<String ^> ^KeyColumns, bool Unique)
+		static CreateOptions NewPrimary(String ^Name, String ^KeyColumns, bool Unique)
 		{
 			CreateOptions o;
 			o.Name = Name;
 			o.KeyColumns = KeyColumns;
-			o.Unique = Unique;
-			o.Primary = true;
-			return o;
-		}
-
-		///<summary>New index struct for a primary key initalized with name and uniqueness constraint, with a System.Collections.Generic.List backing the KeyColumns member.</summary>
-		static CreateOptions NewPrimary(String ^Name, bool Unique)
-		{
-			CreateOptions o;
-			o.Name = Name;
-			o.KeyColumns = gcnew List<String ^>();
 			o.Unique = Unique;
 			o.Primary = true;
 			return o;
 		}
 
 		///<summary>New index struct for secondary index with specified values></summary>
-		static CreateOptions NewSecondary(String ^Name, ICollection<String ^> ^KeyColumns, bool Unique)
+		static CreateOptions NewSecondary(String ^Name, String ^KeyColumns, bool Unique)
 		{
 			CreateOptions o;
 			o.Name = Name;
 			o.KeyColumns = KeyColumns;
-			o.Unique = Unique;
-			o.Primary = false;
-			return o;
-		}
-		
-		///<summary>New index struct for a secondary index initalized with name and uniqueness constraint, with a System.Collections.Generic.List backing the KeyColumns member.</summary>
-		static CreateOptions NewSecondary(String ^Name, bool Unique)
-		{
-			CreateOptions o;
-			o.Name = Name;
-			o.KeyColumns = gcnew List<String ^>();
 			o.Unique = Unique;
 			o.Primary = false;
 			return o;
@@ -339,26 +316,19 @@ internal:
 		jic.grbit = CreateOptionsFlagsToBits(NewIx);
 
 		{
-			ulong buffct = 0;
+			String ^KeyColumns = NewIx.KeyColumns;
 
-			for each(String ^str in NewIx.KeyColumns)
-				buffct += str->Length + 1; //string chars plus null terminator
+			ulong buffct = KeyColumns->Length + 2; //plus double null terminator
 
-			buffct++; //plus an extra char for the double terminator
+			char const *src = mc.marshal_as<char const *>(KeyColumns);
 
 			char *buff = fl.alloc_array_zero<char>(buffct);
 
-			ulong buffpos = 0;
+			memcpy(buff, src, KeyColumns->Length);
 
-			for each(String ^str in NewIx.KeyColumns)
-			{
-				char const *src = mc.marshal_as<char const *>(str);
-				ulong cpybytes = str->Length;
-
-				memcpy(buff + buffpos, src, cpybytes);
-
-				buffpos += str->Length + 1; //each character plus one for the (aleady nulled) terminator;
-			}
+			for(ulong i = 0; i < buffct; i++)
+				if(buff[i] == '.')
+					buff[i] = '\0'; //ESE needs null delimited, double null ending already done
 
 			jic.szKey = buff;
 			jic.cbKey = buffct;
@@ -435,15 +405,21 @@ internal:
 	Index(CreateOptions %co, JET_SESID sesid, JET_TABLEID tableid) :
 		_IndexName(co.Name),
 		_JetFlags(CreateOptionsFlagsToBits(co)),
-		_ColumnCount(co.KeyColumns->Count),
-		_KeyColumns(gcnew array<KeyColumn>(co.KeyColumns->Count)),
 		_LCID(co.LCID),
 		_VarSegMax(co.VarSegMac),
 		_JetIndexID(new JET_INDEXID)
 	{
+		array<wchar_t> ^delimiters = gcnew array<wchar_t>(1);
+		delimiters[0] = L'.';
+		
+		array<String ^> ^ColNames = co.KeyColumns->Split(delimiters);
+		
+		_ColumnCount = ColNames->Length;
+		_KeyColumns = gcnew array<KeyColumn>(ColNames->Length);
+
 		ulong i = 0;
 
-		for each(String ^s in co.KeyColumns)
+		for each(String ^s in ColNames)
 		{
 			_KeyColumns[i].Name = s;
 			i++;

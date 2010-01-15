@@ -72,16 +72,13 @@ namespace Test.Functionality
 				tco.Columns.Add(new Column.CreateOptions("OpenDate", Column.Type.DateTime));
 				tco.Columns.Add(new Column.CreateOptions("Customer", Column.Type.Long));
 
-				var ixco = Index.CreateOptions.NewPrimary("PK", true);
-				ixco.KeyColumns.Add("+ID");
+				var ixco = Index.CreateOptions.NewPrimary("PK", "+ID", true);
 				tco.Indexes.Add(ixco);
 
-				ixco = Index.CreateOptions.NewSecondary("OpenDateIx", false);
-				ixco.KeyColumns.Add("-OpenDate");
+				ixco = Index.CreateOptions.NewSecondary("OpenDateIx", "-OpenDate", false);
 				tco.Indexes.Add(ixco);
 
-				ixco = Index.CreateOptions.NewSecondary("CustomerIx", false);
-				ixco.KeyColumns.Add("+Customer");
+				ixco = Index.CreateOptions.NewSecondary("CustomerIx", "+Customer", false);
 				tco.Indexes.Add(ixco);
 				
 				Order = Table.Create(sess, db, tco, out newcols, out newixs);
@@ -97,12 +94,10 @@ namespace Test.Functionality
 				tco.Columns.Add(new Column.CreateOptions("ID", Column.Type.Long));
 				tco.Columns.Add(new Column.CreateOptions("Name", Column.Type.Text, Column.CodePage.Unicode));
 
-				ixco = Index.CreateOptions.NewPrimary("PK", true);
-				ixco.KeyColumns.Add("+ID");
+				ixco = Index.CreateOptions.NewPrimary("PK", "+ID", true);
 				tco.Indexes.Add(ixco);
 
-				ixco = Index.CreateOptions.NewSecondary("Name", true);
-				ixco.KeyColumns.Add("+Name");
+				ixco = Index.CreateOptions.NewSecondary("Name", "+Name", true);
 				tco.Indexes.Add(ixco);
 
 				Customer = Table.Create(sess, db, tco, out newcols, out newixs);
@@ -118,9 +113,7 @@ namespace Test.Functionality
 				tco.Columns.Add(new Column.CreateOptions("Desc", Column.Type.LongText, Column.CodePage.English));
 				tco.Columns.Add(new Column.CreateOptions("Amount", Column.Type.Currency));
 
-				ixco = Index.CreateOptions.NewPrimary("PK", true);
-				ixco.KeyColumns.Add("+Order");
-				ixco.KeyColumns.Add("+Seq");
+				ixco = Index.CreateOptions.NewPrimary("PK", "+Order.+Seq", true);
 				tco.Indexes.Add(ixco);
 
 				ixco = new Index.CreateOptions
@@ -131,9 +124,8 @@ namespace Test.Functionality
 					{
 						LengthMin = 2
 					},
-					KeyColumns = new List<String>()
+					KeyColumns = "+Desc"
 				};
-				ixco.KeyColumns.Add("+Desc");
 				tco.Indexes.Add(ixco);
 
 				OrderLine = Table.Create(sess, db, tco, out newcols, out newixs);

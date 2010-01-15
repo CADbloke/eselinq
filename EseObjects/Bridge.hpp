@@ -199,55 +199,6 @@ public ref struct Bridge
 		ThrowConversionError(o->GetType(), array<Object ^>::typeid);
 		return nullptr;
 	}
-
-	///<summary>Creates an object from the data in the current row, represented by IReadRecord.</summary>
-	generic <class T> virtual T RowToObject(IReadRecord ^rr)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Set up to insert a new row from the specified object. Update will be implicitly completed unless an exception is thrown.</summary>
-	virtual void RowInsertFromObject(IWriteRecord ^wr, Object ^o)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Creates an object from the data obtained from scrolling the cursor forward until there is no current record. The process should not modify the table.</summary>
-	///<remarks>Limits and positioning should not be modified. The cursor may be associated with a temporary table.</remarks>
-	generic <class T> virtual T CursorToObject(Cursor ^csr)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Creates an object from the data in the specified table. The process should not modify the table.</summary>
-	generic <class T> virtual T TableToObject(Table ^tab)
-	{
-		throw gcnew NotImplementedException();		
-	}
-
-	///<summary>Appends data from the specified object to the specified table.</summary>
-	virtual void TableAppendFromObject(Object ^o, Table ^tab)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Creates a new table from the specified object.</summary>
-	virtual Table ^TableCreateFromObject(Object ^o)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Creates an object from the data in the specified database.</summary>
-	generic <class T> virtual T DatabaseToObject(Database ^db)
-	{
-		throw gcnew NotImplementedException();
-	}
-
-	///<summary>Appends data from the specified object to the specified database.</summary>
-	virtual void DatabaseAppendFromObject(Object ^o, Database ^db)
-	{
-		throw gcnew NotImplementedException();
-	}
 };
 
 Bridge ^GetDefaultBridge()
