@@ -62,6 +62,9 @@ namespace Test.Functionality
 
 			try
 			{
+				Console.WriteLine("Basic Linq");
+				BasicLinq.RunTests(sess, d);
+
 				Console.WriteLine("Temp table testing");
 				Functionality.TempTable.Test(sess, d);
 

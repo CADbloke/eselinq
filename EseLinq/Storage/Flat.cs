@@ -39,7 +39,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace EseLinq.Storage
 {
-	public class Flat<T> : IRecordLevelBridge<T>
+	public class Flat<T> : IRecordBridge<T>
 	{
 		//base linkage to .NET member
 		protected abstract class MemberLink
@@ -372,8 +372,11 @@ namespace EseLinq.Storage
 			else
 				cco.Type = TypeMap[type];
 
-			cco.NotNull = type.IsValueType;
+			//tagged not compatible with these options
+			if(!cco.Tagged && cco.Type != Column.Type.LongBinary && cco.Type != Column.Type.LongText)
+				cco.NotNull = type.IsValueType;
 
+			//Unicode for text to cover String range
 			if(cco.Type == Column.Type.Text || cco.Type == Column.Type.LongText)
 				cco.CP = Column.CodePage.Unicode;
 
@@ -426,8 +429,6 @@ namespace EseLinq.Storage
 
 			foreach(IndexAttribute ixa in Attribute.GetCustomAttributes(type, typeof(IndexAttribute)))
 			{
-				//var ixa = (IndexAttribute)a;
-
 				var ixco = new Index.CreateOptions
 				{
 					Primary = ixa is PrimaryIndexAttribute,

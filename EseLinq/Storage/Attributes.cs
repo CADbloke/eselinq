@@ -37,7 +37,7 @@ using EseObjects;
 namespace EseLinq.Storage
 {
 
-	public interface IRecordLevelBridge<T>
+	public interface IRecordBridge<T>
 	{
 		void Write(IWriteRecord wr, T o);
 		T Read(IReadRecord rr);
@@ -51,7 +51,7 @@ namespace EseLinq.Storage
 		void WriteToRecord(IWriteRecord wr);
 	}
 
-	public sealed class RecordLevelExplicit<T> : IRecordLevelBridge<T>
+	public sealed class RecordLevelExplicit<T> : IRecordBridge<T>
 		where T : IRecordSerializable
 	{
 		ConstructorInfo con;

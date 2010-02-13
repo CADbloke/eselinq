@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Functionality\BasicLinq.cs" />
     <Compile Include="Functionality\BookmarkTest.cs" />
     <Compile Include="Functionality\EnumTest.cs" />
     <Compile Include="Functionality\KeyTest.cs" />

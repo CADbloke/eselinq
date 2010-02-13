@@ -33,7 +33,7 @@ namespace Test.Functionality
 	}
 
 	[MemberwiseStorageAttribute]
-	struct ABC
+	public struct ABC
 	{
 		public int a;
 		public string b;
@@ -161,7 +161,6 @@ namespace Test.Functionality
 				DEF d1 = new DEF {d = 5, e = "qx", f = Math.PI, xyz = a};
 				DEF d2;
 				
-				//TODO: make implicit
 				Column[] cols;
 				Index[] ixs;
 				//var table = Table.Create(sess, db, new Table.CreateOptions

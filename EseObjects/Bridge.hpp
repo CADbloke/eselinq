@@ -86,7 +86,7 @@ public ref struct Bridge
 	///<param name="cp">Code page, needed for text types. Must be 1252 for ASCII or 1200 for Unicode when specifying a string object type.</param>
 	virtual Object ^ValueBytesToObject(Type ^type, bool isnull, array<uchar> ^bytes, Column::Type coltyp, ushort cp)
 	{
-		ThrowConversionError(type, coltyp);
+		ThrowConversionError(coltyp, type);
 		return nullptr;
 	}
 
