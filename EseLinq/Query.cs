@@ -22,7 +22,7 @@ namespace EseLinq
 	public class Query<T> : IQueryable<T>, IQueryable, PrePlanned
 	{
 		Plan plan;
-		ScalarPlan scalar_plan;
+		CalcPlan calc;
 		Expression exp;
 		Provider provider;
 
@@ -31,26 +31,28 @@ namespace EseLinq
 			plan = new Scan(table);
 			exp = Expression.Constant(this);
 			provider = pro;
-			this.scalar_plan = Plans.MakeObject.AutoCreate<T>(plan);
+			this.calc = Plans.MakeObject.AutoCreate<T>(plan);
 		}
 
-		internal Query(Plan plan, object value_plan, Expression exp, Provider pro)
+		internal Query(Plan plan, Plans.Translator.Channel chan, Expression exp, Provider pro)
 		{
 			this.plan = plan;
 			this.exp = exp;
 			this.provider = pro;
 
 			//use existing scalar if availaible, else build an object from the base plan
-			this.scalar_plan = value_plan as ScalarPlan;
-			if(this.scalar_plan == null)
-				this.scalar_plan = Plans.MakeObject.AutoCreate<T>(plan);
+
+			this.calc = chan.AsCalcPlan(typeof(T));
 		}
 
 		IEnumerator<T> IEnumerable<T>.GetEnumerator()
 		{
 			OperatorMap om = new OperatorMap();
 
-			return new Executor(this, plan.ToOperator(om), scalar_plan.ToScalar(om));
+			var op = plan.ToOperator(om);
+			var scalar = calc.ToCalc(om);
+
+			return new Executor(this, op, scalar);
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()
@@ -58,7 +60,7 @@ namespace EseLinq
 			OperatorMap om = new OperatorMap();
 
 			var op = plan.ToOperator(om);
-			var scalar = scalar_plan.ToScalar(om);
+			var scalar = calc.ToCalc(om);
 
 			return new Executor(this, op, scalar);
 		}
@@ -67,9 +69,9 @@ namespace EseLinq
 		{
 			Query<T> query;
 			Operator top;
-			Scalar scalar;
+			Calc scalar;
 
-			public Executor(Query<T> query, Operator top, Scalar scalar)
+			public Executor(Query<T> query, Operator top, Calc scalar)
 			{
 				this.query = query;
 				this.top = top;

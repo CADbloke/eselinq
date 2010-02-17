@@ -48,28 +48,33 @@ namespace Test.Functionality
 					u.Set(col[2], "foo");
 					u.Complete();
 				}
+				using(var u = csr.BeginInsert())
+				{
+					u.Set(col[0], 4);
+					u.Set(col[1], 4.444);
+					u.Set(col[2], "bar");
+					u.Complete();
+				}
 
 				Provider pro = new Provider(d);
-				Query<ABC2> q = new Query<ABC2>(pro, tab);
+				Query<ABC2> src = new Query<ABC2>(pro, tab);
 
-				IEnumerable<ABC2> query;
-
-				//query = from abc in q where abc.a == 3;
-				query = q.Where(abc => abc.a == 3);
+				IEnumerable<ABC2> q1 = src.Where(abc => abc.a == 3);
 				
-				//query = from abc in q select abc;
-
-				foreach(ABC2 abc in q)
+				Console.WriteLine("A");
+				foreach(ABC2 abc in q1)
 					Console.WriteLine(abc.a);
 
-				var query2 = q.Where<ABC2>(abc => abc.a == 3).Select<ABC2, int>(abc => abc.a);
+				var q2 = src.Where<ABC2>(abc => abc.a == 3).Select<ABC2, int>(abc => abc.a);
 
-				foreach(int x in query2)
+				Console.WriteLine("B");
+				foreach(int x in q2)
 					Console.WriteLine(x);
 
-				var query3 = from abc in q where abc.a == 3 select abc.b;
+				var q3 = from abc in src where abc.a == 3 select abc.b;
 
-				foreach(var x in query3)
+				Console.WriteLine("C");
+				foreach(var x in q3)
 					Console.WriteLine(x);
 			}
 		}

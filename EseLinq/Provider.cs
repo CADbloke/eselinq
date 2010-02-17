@@ -20,11 +20,11 @@ namespace EseLinq
 
 		public IQueryable<T> CreateQuery<T>(Expression exp)
 		{
-			Translator.Upstream ups = new Translator.Upstream();
-			ups.Init();
-			var downs = Translator.ToPlan(exp, ups);
+			Translator.Downstream downs = new Translator.Downstream();
+			downs.Init();
+			var ups = Translator.Translate(exp, downs);
 
-			return new Query<T>(downs.plan, downs.value_plan, exp, this);
+			return new Query<T>(ups.plan, ups.chan, exp, this);
 		}
 
 		public IQueryable CreateQuery(Expression exp)
