@@ -74,7 +74,11 @@
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Plans\BridgePlan.cs" />
+    <Compile Include="Plans\CalcPlan.cs" />
+    <Compile Include="Plans\MemoryTable.cs" />
     <Compile Include="Plans\Plan.cs" />
+    <Compile Include="Plans\TablePlan.cs" />
     <Compile Include="Plans\Translator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Provider.cs" />

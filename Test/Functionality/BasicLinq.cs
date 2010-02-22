@@ -55,27 +55,52 @@ namespace Test.Functionality
 					u.Set(col[2], "bar");
 					u.Complete();
 				}
+				using(var u = csr.BeginInsert())
+				{
+					u.Set(col[0], 5);
+					u.Set(col[1], 5.55);
+					u.Set(col[2], "foo");
+					u.Complete();
+				}
 
 				Provider pro = new Provider(d);
 				Query<ABC2> src = new Query<ABC2>(pro, tab);
 
 				IEnumerable<ABC2> q1 = src.Where(abc => abc.a == 3);
-				
-				Console.WriteLine("A");
+
+				Console.WriteLine("A: 3");
 				foreach(ABC2 abc in q1)
 					Console.WriteLine(abc.a);
 
 				var q2 = src.Where<ABC2>(abc => abc.a == 3).Select<ABC2, int>(abc => abc.a);
 
-				Console.WriteLine("B");
+				Console.WriteLine("B: 3");
 				foreach(int x in q2)
 					Console.WriteLine(x);
 
-				var q3 = from abc in src where abc.a == 3 select abc.b;
+				var q3 = from abc in src
+						 where abc.a == 3
+						 select abc.b;
 
-				Console.WriteLine("C");
+				Console.WriteLine("C 5.55");
 				foreach(var x in q3)
 					Console.WriteLine(x);
+
+				var q4 = (from abc in src
+						  where abc.c == "foo"
+						  select abc.b).Distinct<float>();
+
+				Console.WriteLine("D 5.55");
+				foreach(var x in q4)
+				    Console.WriteLine(x);
+
+				//var q5 = (from abc in src join abc2 in src on abc.a equals abc2.a select abc);
+				//var q5 = (from abc in src
+				//          join abc2 in src on abc.a equals abc2.a
+				//          select new
+				//          {
+				//              abc.a, abc.b, abc.c, a2 = abc2.a, b2 = abc2.b, c2 = abc2.c
+				//          });
 			}
 		}
 	}

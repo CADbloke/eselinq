@@ -65,6 +65,13 @@ namespace Test.Functionality
 				Console.WriteLine("Basic Linq");
 				BasicLinq.RunTests(sess, d);
 
+				if("abc".Length == 3)
+				{
+					Console.WriteLine("Done!");
+					Console.ReadLine();
+					return;
+				}
+
 				Console.WriteLine("Temp table testing");
 				Functionality.TempTable.Test(sess, d);
 

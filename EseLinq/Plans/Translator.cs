@@ -15,11 +15,30 @@ namespace EseLinq.Plans
 	{
 		internal enum RowPlanType
 		{
+			/// <summary>
+			/// Default. All fields null.
+			/// </summary>
 			Invalid = 0,
+			/// <summary>
+			/// Result of a calculation. Associated plan controls position, if present. Agg. fields by type.
+			/// </summary>
 			Calc,
+			/// <summary>
+			/// Single column selected from a ESE table. Agg. fields determined from Type.
+			/// </summary>
 			Column,
+			/// <summary>
+			/// Single ESE table. Agg. fields determined by Type.
+			/// </summary>
 			Table,
-			Tables
+			/// <summary>
+			/// Memory stored table. Agg. fields determined by table definition.
+			/// </summary>
+			MemoryTable,
+			/// <summary>
+			/// Mapping of fields after New or selection into a nonsource composite. Agg. fields by type.
+			/// </summary>
+			Collection
 		}
 
 		internal struct Channel
@@ -30,9 +49,14 @@ namespace EseLinq.Plans
 			internal readonly CalcPlan cplan;
 			internal readonly Plan plan;
 			internal readonly Table table;
+			internal readonly MemoryTable mtable;
 			internal readonly Column column;
 			internal readonly Type type;
+			internal readonly Dictionary<string, Channel> fields;
 
+			/// <summary>
+			/// Calculation without associated plan.
+			/// </summary>
 			internal Channel(CalcPlan cplan, Type type)
 			{
 				this.cplan = cplan;
@@ -41,29 +65,30 @@ namespace EseLinq.Plans
 
 				this.plan = null;
 				this.table = null;
+				this.mtable = null;
 				this.column = null;
+				this.fields = null;
 			}
 
-			internal Channel(Plan plan, Type type)
+			/// <summary>
+			/// Plan with a specific single memory table.
+			/// </summary>
+			internal Channel(Plan plan, MemoryTable mtable, Type type)
 			{
 				this.plan = plan;
 				this.type = type;
+				this.mtable = mtable;
+				rptype = RowPlanType.Table;
 
-				if(plan.tables.Length == 1)
-				{
-					this.table = plan.tables[0];
-					rptype = RowPlanType.Table;
-				}
-				else
-				{
-					this.table = null;
-					rptype = RowPlanType.Tables;
-				}
-
+				this.table = null;
 				this.cplan = null;
 				this.column = null;
+				this.fields = null;
 			}
 
+			/// <summary>
+			/// Plan with a specific single table.
+			/// </summary>
 			internal Channel(Plan plan, Table table, Type type)
 			{
 				this.plan = plan;
@@ -73,8 +98,13 @@ namespace EseLinq.Plans
 
 				this.cplan = null;
 				this.column = null;
+				this.mtable = null;
+				this.fields = null;
 			}
 
+			/// <summary>
+			/// Plan with a specific column.
+			/// </summary>
 			internal Channel(Plan plan, Table table, Column column, Type type)
 			{
 				this.plan = plan;
@@ -84,8 +114,13 @@ namespace EseLinq.Plans
 				rptype = RowPlanType.Column;
 
 				this.cplan = null;
+				this.mtable = null;
+				this.fields = null;
 			}
 
+			/// <summary>
+			/// Plan with a specific column, selected by name.
+			/// </summary>
 			internal Channel(Plan plan, string colname, Type type)
 			{
 				Column found_col = null;
@@ -111,6 +146,24 @@ namespace EseLinq.Plans
 				rptype = RowPlanType.Column;
 
 				this.cplan = null;
+				this.mtable = null;
+				this.fields = null;
+			}
+
+			/// <summary>
+			/// Plan with specific calculation.
+			/// </summary>
+			internal Channel(Plan plan, CalcPlan cplan, Type type)
+			{
+				this.plan = plan;
+				this.type = type;
+				this.cplan = cplan;
+				rptype = RowPlanType.Calc;
+				
+				this.table = null;
+				this.mtable = null;
+				this.column = null;
+				this.fields = null;
 			}
 
 			internal CalcPlan AsCalcPlan(Type type)
@@ -126,7 +179,8 @@ namespace EseLinq.Plans
 				case RowPlanType.Table:
 					return MakeObject.AutoCreate(plan, type);
 
-				case RowPlanType.Tables:
+				case RowPlanType.MemoryTable:
+				case RowPlanType.Collection:
 					throw new ApplicationException("TODO: fixme");
 
 				default:
@@ -143,7 +197,8 @@ namespace EseLinq.Plans
 		internal struct Downstream
 		{
 			internal Dictionary<string, Channel> env;
-			internal Plan context;
+			//internal Plan context;
+			internal Channel context;
 
 			///<summary>use this constructor when about to make modifications; copies mutable members</summary>
 			internal Downstream(Downstream from)
@@ -208,6 +263,11 @@ namespace EseLinq.Plans
 
 				return r;
 			}
+
+			internal Upstream WithPlan(Plan plan)
+			{
+				return new Upstream(chan, plan);
+			}
 		}
 
 
@@ -249,7 +309,7 @@ namespace EseLinq.Plans
 		{
 			var planned = exp.Value as PrePlanned;
 			if(planned != null)
-				return new Upstream(new Channel(planned.plan, exp.Type));
+				return new Upstream(planned.chan);
 
 			return new Upstream(new Channel(new Constant(exp.Value), exp.Value.GetType()));
 		}
@@ -266,9 +326,9 @@ namespace EseLinq.Plans
 			//copy value for upstream use
 			downs = new Downstream(downs);
 
-			Plan bodyp = downs.context;
+			var bodyp = downs.context;
 
-			downs.env.Add(exp.Parameters[0].Name, new Channel(bodyp, exp.Type));
+			downs.env.Add(exp.Parameters[0].Name, bodyp);
 
 			return Translate(exp.Body, downs);
 		}
@@ -305,22 +365,27 @@ namespace EseLinq.Plans
 			case "Where":
 				{
 					var data = Translate(exp.Arguments[0], downs);
-					downs.context = data.plan;
+					downs.context = data.chan;
 					var pred = Translate(exp.Arguments[1], downs);
 					var body = new Filter(data.plan, pred.chan.AsCalcPlan());
 
-					return data.Merge(pred).WithChannel(new Channel(body, exp.Type));
+					return data.Merge(pred).WithPlan(body);
 				}
 			case "Select":
 				{
 					var data = Translate(exp.Arguments[0], downs);
-					downs.context = data.plan;
+					downs.context = data.chan;
 					var body = Translate(exp.Arguments[1], downs);
 
-					data = data.Merge(body);
-					data.chan = body.chan;
+					return data.Merge(body).WithChannel(body.chan).WithPlan(data.plan);
+				}
+			case "Distinct":
+				{
+					var data = Translate(exp.Arguments[0], downs);
+					var elems = data.chan.AsCalcPlan();
+					var hashtab = new MemoryHashDisctinctPlan(data.plan, elems, exp.Type);
 
-					return data;
+					return data.WithChannel(new Channel((Plan)hashtab, (CalcPlan)hashtab, exp.Type));
 				}
 			}
 

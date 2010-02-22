@@ -17,6 +17,10 @@ namespace EseLinq
 		{
 			get;
 		}
+		Translator.Channel chan
+		{
+			get;
+		}
 	}
 
 	public class Query<T> : IQueryable<T>, IQueryable, PrePlanned
@@ -25,6 +29,7 @@ namespace EseLinq
 		CalcPlan calc;
 		Expression exp;
 		Provider provider;
+		Table table;
 
 		public Query(Provider pro, Table table)
 		{
@@ -32,6 +37,7 @@ namespace EseLinq
 			exp = Expression.Constant(this);
 			provider = pro;
 			this.calc = Plans.MakeObject.AutoCreate<T>(plan);
+			this.table = table;
 		}
 
 		internal Query(Plan plan, Plans.Translator.Channel chan, Expression exp, Provider pro)
@@ -39,10 +45,8 @@ namespace EseLinq
 			this.plan = plan;
 			this.exp = exp;
 			this.provider = pro;
-
-			//use existing scalar if availaible, else build an object from the base plan
-
 			this.calc = chan.AsCalcPlan(typeof(T));
+			this.table = chan.table;
 		}
 
 		IEnumerator<T> IEnumerable<T>.GetEnumerator()
@@ -69,20 +73,20 @@ namespace EseLinq
 		{
 			Query<T> query;
 			Operator top;
-			Calc scalar;
+			Calc value;
 
 			public Executor(Query<T> query, Operator top, Calc scalar)
 			{
 				this.query = query;
 				this.top = top;
-				this.scalar = scalar;
+				this.value = scalar;
 			}
 
 			public T Current
 			{
 				get
 				{
-					return (T)scalar.value;
+					return (T)value.value;
 				}
 			}
 
@@ -139,6 +143,18 @@ namespace EseLinq
 			get
 			{
 				return plan;
+			}
+		}
+
+		//TODO: should be more direct
+		Translator.Channel PrePlanned.chan
+		{
+			get
+			{
+				if(table != null)
+					return new Translator.Channel(plan, table, typeof(T));
+				else
+					return new Translator.Channel(plan, calc, typeof(T));
 			}
 		}
 	}
