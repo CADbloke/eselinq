@@ -92,7 +92,15 @@ namespace Test.Functionality
 
 				Console.WriteLine("D 5.55");
 				foreach(var x in q4)
-				    Console.WriteLine(x);
+					Console.WriteLine(x);
+
+
+				var q5 = from n in src
+								from m in src
+								select n.a + m.a;
+				Console.WriteLine("E");
+				foreach(var x in q5)
+					Console.WriteLine(x);
 
 				//var q5 = (from abc in src join abc2 in src on abc.a equals abc2.a select abc);
 				//var q5 = (from abc in src

@@ -124,23 +124,17 @@ namespace EseLinq.Plans
 			internal Channel(Plan plan, string colname, Type type)
 			{
 				Column found_col = null;
-				Table found_table = null;
 
-				foreach(Table t in plan.tables)
-					foreach(Column c in t.Columns)
+				//foreach(Table t in plan.tables)
+					foreach(Column c in plan.table.Columns)
 						if(c.Name == colname)
 						{
-							if(found_col == null)
-							{
-								found_col = c;
-								found_table = t;
-							}
-							else
-								throw new AmbiguousMatchException(string.Format("Multiple candidates for column {0}, including tables {1} and {2}", colname, found_table.Name, t.Name));
+							found_col = c;
+							break;
 						}
 
 				this.plan = plan;
-				table = found_table;
+				table = plan.table;
 				column = found_col;
 				this.type = type;
 				rptype = RowPlanType.Column;
@@ -198,13 +192,16 @@ namespace EseLinq.Plans
 		{
 			internal Dictionary<string, Channel> env;
 			//internal Plan context;
-			internal Channel context;
+			internal Channel[] context;
 
 			///<summary>use this constructor when about to make modifications; copies mutable members</summary>
 			internal Downstream(Downstream from)
 			{
 				this.env = new Dictionary<string, Channel>(from.env);
-				this.context = from.context;
+				if(from.context != null)
+					this.context = from.context.ToArray();
+				else
+					this.context = null;
 			}
 
 			internal void Init()
@@ -243,25 +240,9 @@ namespace EseLinq.Plans
 				this.plan = chan.plan;
 			}
 
-			internal Upstream Merge(Upstream other)
-			{
-				Upstream r = this;
-
-				if(r.plan == null)
-					r.plan = other.plan;
-				
-				return r;
-			}
-
 			internal Upstream WithChannel(Channel chan)
 			{
-				Upstream r = this;
-
-				r.chan = chan;
-				if(chan.plan != null)
-					r.plan = chan.plan;
-
-				return r;
+				return new Upstream(chan, plan);
 			}
 
 			internal Upstream WithPlan(Plan plan)
@@ -270,6 +251,24 @@ namespace EseLinq.Plans
 			}
 		}
 
+		/// <summary>
+		/// Not intended to be called directly; used in an expression to inject upstream state.
+		/// </summary>
+		public static IQueryable<T> InjectQueryClone<T>(Query<T> q)
+		{
+			return q;
+		}
+
+		internal static Upstream CloneQuery(QueryProperties query)
+		{
+			var cm = new CloneMap();
+			var plan = query.plan.Clone(cm);
+
+			if(query.table != null)
+				return new Upstream(new Channel(plan, query.table, query.type), plan);
+
+			return new Upstream(new Channel(plan, query.cplan, query.type), plan);
+		}
 
 		internal static Upstream Translate(UnaryExpression exp, Downstream downs)
 		{
@@ -288,11 +287,12 @@ namespace EseLinq.Plans
 			switch(exp.NodeType)
 			{
 			case ExpressionType.Equal:
+			case ExpressionType.Add:
 				{
 					var left = Translate(exp.Left, downs);
 					var right = Translate(exp.Right, downs);
-
-					return left.Merge(right).WithChannel(new Channel(new BinaryCalc(exp.NodeType, left.chan.AsCalcPlan(), right.chan.AsCalcPlan()), exp.Type));
+					
+					return new Upstream(new Channel(new BinaryCalc(exp.NodeType, left.chan.type, right.chan.type, exp.Type, left.chan.AsCalcPlan(), right.chan.AsCalcPlan()), exp.Type));
 				}
 
 			default:
@@ -307,10 +307,6 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(ConstantExpression exp, Downstream downs)
 		{
-			var planned = exp.Value as PrePlanned;
-			if(planned != null)
-				return new Upstream(planned.chan);
-
 			return new Upstream(new Channel(new Constant(exp.Value), exp.Value.GetType()));
 		}
 
@@ -321,14 +317,11 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(LambdaExpression exp, Downstream downs)
 		{
-			//assuming one parameter
-
 			//copy value for upstream use
 			downs = new Downstream(downs);
 
-			var bodyp = downs.context;
-
-			downs.env.Add(exp.Parameters[0].Name, bodyp);
+			for(int i = 0; i < exp.Parameters.Count; i++)
+				downs.env.Add(exp.Parameters[i].Name, downs.context[i]);
 
 			return Translate(exp.Body, downs);
 		}
@@ -340,14 +333,37 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(MemberExpression exp, Downstream downs)
 		{
-			var parm = (ParameterExpression)exp.Expression;
-			var field = (FieldInfo)exp.Member;
-			var tplan = downs.env[parm.Name];
-
-			switch(tplan.rptype)
 			{
-			case RowPlanType.Table:
-				return new Upstream(new Channel(tplan.plan, field.Name, exp.Type));
+				//TODO: should be runtime?
+				var as_const = exp.Expression as ConstantExpression;
+				if(as_const != null)
+				{
+					var field = (FieldInfo)exp.Member;
+					object val = field.GetValue(as_const.Value);
+
+					var query = val as QueryProperties;
+					if(query != null)
+					{
+						return CloneQuery(query);
+					}
+					
+					return new Upstream(new Channel(new Constant(val), exp.Type));
+				}
+			}
+
+			{
+				var as_parm = exp.Expression as ParameterExpression;
+				if(as_parm != null)
+				{
+					var field = (FieldInfo)exp.Member;
+					var tplan = downs.env[as_parm.Name];
+
+					switch(tplan.rptype)
+					{
+					case RowPlanType.Table:
+						return new Upstream(new Channel(tplan.plan, field.Name, exp.Type));
+					}
+				}
 			}
 
 			throw IDontKnowWhatToDoWithThis(exp);
@@ -360,32 +376,66 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(MethodCallExpression exp, Downstream downs)
 		{
-			switch(exp.Method.Name)
+			switch(exp.Method.DeclaringType.FullName)
 			{
-			case "Where":
+			case "System.Linq.Queryable":
+				switch(exp.Method.Name)
 				{
-					var data = Translate(exp.Arguments[0], downs);
-					downs.context = data.chan;
-					var pred = Translate(exp.Arguments[1], downs);
-					var body = new Filter(data.plan, pred.chan.AsCalcPlan());
+				case "Where":
+					{
+						var data = Translate(exp.Arguments[0], downs);
+						downs.context = new Channel[] { data.chan };
+						var pred = Translate(exp.Arguments[1], downs);
+						var body = new Filter(data.plan, pred.chan.AsCalcPlan());
 
-					return data.Merge(pred).WithPlan(body);
+						return data.WithPlan(body);
+					}
+				case "Select":
+					{
+						var data = Translate(exp.Arguments[0], downs);
+						downs.context = new Channel[] { data.chan };
+						var body = Translate(exp.Arguments[1], downs);
+
+						return new Upstream(body.chan, data.plan);
+					}
+				case "SelectMany":
+					{
+						var outer = Translate(exp.Arguments[0], downs);
+						downs.context = new Channel[] { outer.chan};
+
+						var inner = Translate(exp.Arguments[1], downs);
+						downs.context = new Channel[] { outer.chan, inner.chan };
+						
+						var body = Translate(exp.Arguments[2], downs);
+
+						var product = new Product(outer.plan, inner.plan);
+
+						return new Upstream(body.chan, product);
+					}
+				case "Distinct":
+					{
+						var data = Translate(exp.Arguments[0], downs);
+						var elems = data.chan.AsCalcPlan();
+						var hashtab = new MemoryHashDisctinctPlan(data.plan, elems, exp.Type);
+
+						return new Upstream(new Channel((Plan)hashtab, (CalcPlan)hashtab, exp.Type));
+					}
+				default:
+					throw IDontKnowWhatToDoWithThis(exp);
+
 				}
-			case "Select":
-				{
-					var data = Translate(exp.Arguments[0], downs);
-					downs.context = data.chan;
-					var body = Translate(exp.Arguments[1], downs);
 
-					return data.Merge(body).WithChannel(body.chan).WithPlan(data.plan);
-				}
-			case "Distinct":
+			case "EseLinq.Plans.Translator":
+				switch(exp.Method.Name)
 				{
-					var data = Translate(exp.Arguments[0], downs);
-					var elems = data.chan.AsCalcPlan();
-					var hashtab = new MemoryHashDisctinctPlan(data.plan, elems, exp.Type);
+				case "InjectQueryClone":
+					{
+						var cons = (ConstantExpression)exp.Arguments[0];
 
-					return data.WithChannel(new Channel((Plan)hashtab, (CalcPlan)hashtab, exp.Type));
+						return CloneQuery((QueryProperties)cons.Value);
+					}
+				default:
+					throw IDontKnowWhatToDoWithThis(exp);
 				}
 			}
 

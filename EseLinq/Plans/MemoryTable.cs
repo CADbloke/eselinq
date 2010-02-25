@@ -10,8 +10,6 @@ using EseLinq.Storage;
 
 namespace EseLinq.Plans
 {
-	using OperatorMap = Dictionary<Plan, Operator>;
-
 	internal class MemoryHashDisctinctPlan : Plan, MemoryTable, CalcPlan
 	{
 		readonly Plan src;
@@ -19,10 +17,7 @@ namespace EseLinq.Plans
 		readonly Type elem_type;
 
 		internal MemoryHashDisctinctPlan(Plan src, CalcPlan value_src, Type elem_type)
-			: base(src.tables, src.mtables.Append(null))
 		{
-			mtables[mtables.Length-1] = this; //since "this" wasn't availaible one line up
-
 			this.src = src;
 			this.value_src = value_src;
 			this.elem_type = elem_type;
@@ -30,11 +25,12 @@ namespace EseLinq.Plans
 
 		internal override Operator ToOperator(OperatorMap om)
 		{
-			Op op = new Op(this, src.ToOperator(om), value_src.ToCalc(om));
+			return new Op(this, om.Demand(src), value_src.ToCalc(om));
+		}
 
-			om.Add(this, op);
-
-			return op;
+		internal override Plan Clone(CloneMap cm)
+		{
+			return new MemoryHashDisctinctPlan(cm.Demand(src), value_src, elem_type);
 		}
 
 		public MemoryCursor ToMemoryCursor(OperatorMap om)
@@ -42,7 +38,7 @@ namespace EseLinq.Plans
 			return (MemoryCursor)om[this];
 		}
 
-		public Calc ToCalc(Dictionary<Plan, Operator> om)
+		public Calc ToCalc(OperatorMap om)
 		{
 			return (Calc)om[this];
 		}
@@ -74,10 +70,7 @@ namespace EseLinq.Plans
 			readonly Calc value;
 
 			internal Op(MemoryHashDisctinctPlan mtable, Operator src, Calc value)
-				: base(src.cursors, src.mcursors.Append(null))
 			{
-				mcursors[mcursors.Length-1] = this; //since "this" wasn't availaible one line up
-
 				this.mtable = mtable;
 				this.src = src;
 				this.value = value;

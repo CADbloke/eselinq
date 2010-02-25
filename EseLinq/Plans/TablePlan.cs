@@ -10,43 +10,35 @@ using EseLinq.Storage;
 
 namespace EseLinq.Plans
 {
-	using OperatorMap = Dictionary<Plan, Operator>;
-
 	internal class Scan : Plan
 	{
-		internal readonly Table src;
-
 		internal Scan(Table table)
-			: base(new Table[] { table }, new MemoryTable[0])
-		{
-			src = table;
-		}
+			: base(table, null)
+		{}
 
 		internal override Operator ToOperator(OperatorMap om)
 		{
-			var csr = new Cursor(src);
-			var op = new Op(this, csr);
+			return new Op(this, new Cursor(table));
+		}
 
-			om.Add(this, op);
-
-			return op;
+		internal override Plan Clone(CloneMap cm)
+		{
+			return new Scan(table);
 		}
 
 		public override void Dispose()
 		{
-			src.Dispose();
+			table.Dispose();
 		}
 
 		internal class Op : Operator
 		{
 			internal readonly Scan scan;
-			internal readonly Cursor cursor;
 
 			internal Op(Plans.Scan scab, Cursor cursor)
-				: base(new Cursor[] { cursor }, new MemoryCursor[0])
+				: base(cursor, null)
 			{
 				this.scan = scab;
-				this.cursor = cursor;
 				cursor.MoveFirst();
 				cursor.Move(-1);
 			}

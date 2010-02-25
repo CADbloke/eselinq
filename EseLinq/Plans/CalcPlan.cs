@@ -10,8 +10,6 @@ using EseLinq.Storage;
 
 namespace EseLinq.Plans
 {
-	using OperatorMap = Dictionary<Plan, Operator>;
-
 	internal class Retrieve : CalcPlan
 	{
 		internal readonly Plan plan;
@@ -35,7 +33,7 @@ namespace EseLinq.Plans
 			return new Op
 			{
 				plan = this,
-				csr = om[plan].CorrespondingCursor(table)
+				csr = om[plan].cursor
 			};
 		}
 
@@ -73,7 +71,7 @@ namespace EseLinq.Plans
 			this.value = value;
 		}
 
-		public Calc ToCalc(Dictionary<Plan, Operator> om)
+		public Calc ToCalc(OperatorMap om)
 		{
 			return new Op
 			{
@@ -105,18 +103,29 @@ namespace EseLinq.Plans
 
 	internal class BinaryCalc : CalcPlan
 	{
-		internal readonly ExpressionType func;
+		internal readonly Delegate func;
 		internal readonly CalcPlan left;
 		internal readonly CalcPlan right;
 
-		internal BinaryCalc(ExpressionType func, CalcPlan left, CalcPlan right)
+		static bool StaticObjEqual(object x, object y)
 		{
-			this.func = func;
-			this.left = left;
-			this.right = right;
+			return x.Equals(y);
 		}
 
-		public Calc ToCalc(Dictionary<Plan, Operator> om)
+		internal BinaryCalc(ExpressionType expr_ty, Type ltype, Type rtype, Type type, CalcPlan left, CalcPlan right)
+		{
+			this.left = left;
+			this.right = right;
+
+			var x = Expression.Parameter(ltype, "x");
+			var y = Expression.Parameter(rtype, "y");
+
+			var body = Expression.MakeBinary(expr_ty, x, y);
+
+			this.func = Expression.Lambda(body, new ParameterExpression[] {x, y}).Compile();
+		}
+
+		public Calc ToCalc(OperatorMap om)
 		{
 			return new Op
 			{
@@ -136,14 +145,7 @@ namespace EseLinq.Plans
 			{
 				get
 				{
-					switch(plan.func)
-					{
-					case ExpressionType.Equal:
-						return left.value.Equals(right.value);
-
-					default:
-						throw new ArgumentException("Unknown calculation type " + plan.func.ToString());
-					}
+					return plan.func.DynamicInvoke(new object[] { left.value, right.value });
 				}
 			}
 

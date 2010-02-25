@@ -9,21 +9,29 @@ using EseObjects;
 
 namespace EseLinq
 {
-	using OperatorMap = Dictionary<Plan, Operator>;
+	using OperatorMap = OperatorMap;
 
-	internal interface PrePlanned
+	internal interface QueryProperties
 	{
 		Plan plan
 		{
 			get;
 		}
-		Translator.Channel chan
+		Table table
+		{
+			get;
+		}
+		CalcPlan cplan
+		{
+			get;
+		}
+		Type type
 		{
 			get;
 		}
 	}
 
-	public class Query<T> : IQueryable<T>, IQueryable, PrePlanned
+	public class Query<T> : IQueryable<T>, IQueryable, QueryProperties
 	{
 		Plan plan;
 		CalcPlan calc;
@@ -31,10 +39,28 @@ namespace EseLinq
 		Provider provider;
 		Table table;
 
+		internal Expression MakeInject()
+		{
+			return Expression.Call
+			(
+				typeof(Translator),
+				"InjectQueryClone",
+				new Type[]
+				{
+					typeof(T)
+				},
+				new Expression[]
+				{
+					Expression.Constant(this)
+				}
+			);
+		}
+
 		public Query(Provider pro, Table table)
 		{
 			plan = new Scan(table);
-			exp = Expression.Constant(this);
+			var chan = new Translator.Channel(plan, table, typeof(T));
+			exp = MakeInject();
 			provider = pro;
 			this.calc = Plans.MakeObject.AutoCreate<T>(plan);
 			this.table = table;
@@ -52,8 +78,8 @@ namespace EseLinq
 		IEnumerator<T> IEnumerable<T>.GetEnumerator()
 		{
 			OperatorMap om = new OperatorMap();
-
-			var op = plan.ToOperator(om);
+			
+			var op = om.Demand(plan);
 			var scalar = calc.ToCalc(om);
 
 			return new Executor(this, op, scalar);
@@ -138,7 +164,7 @@ namespace EseLinq
 			}
 		}
 
-		Plan PrePlanned.plan
+		Plan QueryProperties.plan
 		{
 			get
 			{
@@ -146,15 +172,27 @@ namespace EseLinq
 			}
 		}
 
-		//TODO: should be more direct
-		Translator.Channel PrePlanned.chan
+		Table QueryProperties.table
 		{
 			get
 			{
-				if(table != null)
-					return new Translator.Channel(plan, table, typeof(T));
-				else
-					return new Translator.Channel(plan, calc, typeof(T));
+				return table;
+			}
+		}
+
+		CalcPlan QueryProperties.cplan
+		{
+			get
+			{
+				return calc;
+			}
+		}
+
+		Type QueryProperties.type
+		{
+			get
+			{
+				return typeof(T);
 			}
 		}
 	}

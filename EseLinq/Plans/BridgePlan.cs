@@ -14,10 +14,7 @@ namespace EseLinq.Plans
 	{
 		public static CalcPlan AutoCreate<T>(Plan src)
 		{
-			if(src.tables.Length == 1) //one single table
-				return new MakeObjectFromBridge<T>(src, new Storage.Flat<T>(src.tables[0]));
-			else
-				return null; //TODO: memberwise input
+			return new MakeObjectFromBridge<T>(src, new Storage.Flat<T>(src.table));
 		}
 
 		internal static CalcPlan AutoCreate(Plan src, Type type)
@@ -40,11 +37,11 @@ namespace EseLinq.Plans
 			this.bridge = bridge;
 		}
 
-		public Calc ToCalc(Dictionary<Plan, Operator> om)
+		public Calc ToCalc(OperatorMap om)
 		{
 			Operator src_op = om[src];
 
-			return new Op(this, src_op.cursors[0]); //single cursor
+			return new Op(this, src_op.cursor); //single cursor
 		}
 
 		internal class Op : Calc

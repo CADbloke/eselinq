@@ -10,30 +10,61 @@ using EseLinq.Storage;
 
 namespace EseLinq.Plans
 {
-	using OperatorMap = Dictionary<Plan, Operator>;
+	internal class OperatorMap : Dictionary<Plan, Operator>
+	{
+		public Operator Demand(Plan p)
+		{
+			Operator o;
+
+			if(!TryGetValue(p, out o))
+			{
+				o = p.ToOperator(this);
+				Add(p, o);
+			}
+
+			return o;
+		}
+	}
+
+	internal class CloneMap : Dictionary<Plan, Plan>
+	{
+		public Plan Demand(Plan p)
+		{
+			Plan r;
+
+			if(!TryGetValue(p, out r))
+			{
+				r = p.Clone(this);
+				Add(p, r);
+			}
+
+			return r;
+		}
+	}
 	
-	//split into TablePlan and MemoryPlan
 	abstract class Plan : IDisposable
 	{
 		/// <summary>
 		/// Tables underlying this plan node. Multiple tables are possible after a join.
 		/// </summary>
-		internal readonly Table[] tables;
-		internal readonly MemoryTable[] mtables;
+		internal readonly Table table;
+		internal readonly MemoryTable mtable;
 
-		protected Plan(Plan copy)
+		protected Plan()
 		{
-			this.tables = copy.tables;
-			this.mtables = copy.mtables;
+			this.table = null;
+			this.mtable = null;
 		}
 
-		protected Plan(Table[] tables, MemoryTable[] mtables)
+		protected Plan(Table table, MemoryTable mtable)
 		{
-			this.tables = tables;
-			this.mtables = mtables;
+			this.table = table;
+			this.mtable = mtable;
 		}
 
+		//TODO: should only be called from OperatorMap
 		internal abstract Operator ToOperator(OperatorMap om);
+		internal abstract Plan Clone(CloneMap cm);
 
 		public virtual void Dispose()
 		{}
@@ -45,19 +76,19 @@ namespace EseLinq.Plans
 		/// Cursors underlying this operator. Multiple cursors are possible after a join.
 		/// Should be the same count and order as Plan.tables;
 		/// </summary>
-		internal readonly Cursor[] cursors;
-		internal readonly MemoryCursor[] mcursors;
+		internal readonly Cursor cursor;
+		internal readonly MemoryCursor mcursor;
 
-		protected Operator(Cursor[] cursors, MemoryCursor[] mcursors)
+		protected Operator()
 		{
-			this.cursors = cursors;
-			this.mcursors = mcursors;
+			this.cursor = null;
+			this.mcursor = null;
 		}
 
-		protected Operator(Operator copy)
+		protected Operator(Cursor cursor, MemoryCursor mcursor)
 		{
-			this.cursors = copy.cursors;
-			this.mcursors = copy.mcursors;
+			this.cursor = cursor;
+			this.mcursor = mcursor;
 		}
 
 		internal abstract Plan plan
@@ -65,16 +96,6 @@ namespace EseLinq.Plans
 			get;
 		}
 
-		internal Cursor CorrespondingCursor(Table search)
-		{
-			Table[] tables = plan.tables;
-
-			for(int i = 0; i < tables.Length; i++)
-				if(tables[i] == search)
-					return cursors[i];
-
-			throw new ApplicationException("No corresponding cursor found for table");
-		}
 		internal abstract bool Advance();
 		internal virtual void Reset()
 		{}
@@ -132,7 +153,6 @@ namespace EseLinq.Plans
 		internal readonly CalcPlan predicate;
 
 		internal Filter(Plan src, CalcPlan predicate)
-			: base(src)
 		{
 			this.src = src;
 			this.predicate = predicate;
@@ -140,13 +160,12 @@ namespace EseLinq.Plans
 
 		internal override Operator ToOperator(OperatorMap om)
 		{
-			var src_op = src.ToOperator(om);
+			return new Op(this, om.Demand(src), om);
+		}
 
-			var op = new Op(this, src_op, om);
-
-			om.Add(this, op);
-
-			return op;
+		internal override Plan Clone(CloneMap cm)
+		{
+			return new Filter(cm.Demand(src), predicate);
 		}
 
 		internal class Op : Operator
@@ -156,7 +175,6 @@ namespace EseLinq.Plans
 			Calc predicate;
 
 			internal Op(Filter filter, Operator src, OperatorMap om)
-				: base(src)
 			{
 				this.filter = filter;
 				this.src = src;
@@ -182,6 +200,64 @@ namespace EseLinq.Plans
 			}
 		}
 	}
+
+	internal class Product : Plan
+	{
+		public readonly Plan outer;
+		public readonly Plan inner;
+
+		public Product(Plan outer, Plan inner)
+		{
+			this.outer = outer;
+			this.inner = inner;
+		}
+
+		internal override Operator ToOperator(OperatorMap om)
+		{
+			return new Op(this, om.Demand(outer), om.Demand(inner));
+		}
+
+		internal override Plan Clone(CloneMap cm)
+		{
+			return new Product(cm.Demand(outer), cm.Demand(inner));
+		}
+
+		internal class Op : Operator
+		{
+			public readonly Product product;
+			public readonly Operator outer;
+			public readonly Operator inner;
+
+			public Op(Product product, Operator outer, Operator inner)
+			{
+				this.product = product;
+				this.outer = outer;
+				this.inner = inner;
+
+				outer.Advance(); //incr to 1st element
+			}
+
+			internal override Plan plan
+			{
+				get
+				{
+					return product;
+				}
+			}
+
+			internal override bool Advance()
+			{
+				if(!inner.Advance())
+				{
+					inner.Reset();
+					return outer.Advance();
+				}
+
+				return true;
+			}
+		}
+	}
+
 
 	public static class ArrayUtil
 	{
