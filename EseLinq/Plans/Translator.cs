@@ -286,17 +286,13 @@ namespace EseLinq.Plans
 		{
 			switch(exp.NodeType)
 			{
-			case ExpressionType.Equal:
-			case ExpressionType.Add:
+			default:
 				{
 					var left = Translate(exp.Left, downs);
 					var right = Translate(exp.Right, downs);
 					
 					return new Upstream(new Channel(new BinaryCalc(exp.NodeType, left.chan.type, right.chan.type, exp.Type, left.chan.AsCalcPlan(), right.chan.AsCalcPlan()), exp.Type));
 				}
-
-			default:
-				throw IDontKnowWhatToDoWithThis(exp);
 			}
 		}
 
@@ -422,7 +418,6 @@ namespace EseLinq.Plans
 					}
 				default:
 					throw IDontKnowWhatToDoWithThis(exp);
-
 				}
 
 			case "EseLinq.Plans.Translator":
@@ -449,7 +444,14 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(NewExpression exp, Downstream downs)
 		{
-			throw IDontKnowWhatToDoWithThis(exp);
+			CalcPlan[] arguments = new CalcPlan[exp.Arguments.Count];
+
+			for(int i = 0; i < exp.Arguments.Count; i++)
+				arguments[i] = Translate(exp.Arguments[i], downs).chan.AsCalcPlan();
+
+			var calc = new MakeObjectFromConstructor(arguments, exp.Constructor);
+
+			return new Upstream(new Channel(calc, exp.Type));
 		}
 
 		internal static Upstream Translate(ParameterExpression exp, Downstream downs)
@@ -479,7 +481,6 @@ namespace EseLinq.Plans
 				if(tyexp != null)
 					return Translate(tyexp, downs);
 			}
-
 			{
 				var tyexp = exp as ConstantExpression;
 				if(tyexp != null)

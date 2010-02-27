@@ -86,6 +86,7 @@ namespace EseLinq.Plans
 						hashset.Add(value.value);
 
 					src.Dispose(); //all results extracted: no longer needed
+					value.Dispose();
 
 					position = hashset.GetEnumerator();
 				}
@@ -143,6 +144,7 @@ namespace EseLinq.Plans
 		void IDisposable.Dispose()
 		{
 			src.Dispose();
+			value_src.Dispose();
 		}
 	}
 }

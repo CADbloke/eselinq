@@ -73,4 +73,65 @@ namespace EseLinq.Plans
 			src.Dispose();
 		}
 	}
+
+	internal class MakeObjectFromConstructor : CalcPlan
+	{
+		CalcPlan[] sources;
+		ConstructorInfo ctor;
+
+		public MakeObjectFromConstructor(CalcPlan[] sources, ConstructorInfo ctor)
+		{
+			this.sources = sources;
+			this.ctor = ctor;
+		}
+
+		public Calc ToCalc(OperatorMap om)
+		{
+			Calc[] calc_sources = new Calc[sources.Length];
+
+			for(int i = 0; i < sources.Length; i++)
+				calc_sources[i] = sources[i].ToCalc(om);
+
+			return new Op(this, calc_sources);
+		}
+
+		public void Dispose()
+		{
+			foreach(var i in sources)
+				i.Dispose();
+		}
+
+		internal class Op : Calc
+		{
+			MakeObjectFromConstructor plan;
+			Calc[] sources;
+
+			public Op(MakeObjectFromConstructor plan, Calc[] sources)
+			{
+				this.plan = plan;
+				this.sources = sources;
+			}
+
+			public object value
+			{
+				get
+				{
+					object[] fields = new object[sources.Length];
+
+					for(int i = 0; i < sources.Length; i++)
+						fields[i] = sources[i].value;
+
+					return plan.ctor.Invoke(fields);
+				}
+			}
+
+			public void Dispose()
+			{
+				foreach(var i in sources)
+					i.Dispose();
+			}
+		}
+
+	}
+
 }

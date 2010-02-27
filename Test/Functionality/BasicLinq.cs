@@ -102,12 +102,27 @@ namespace Test.Functionality
 				foreach(var x in q5)
 					Console.WriteLine(x);
 
-				//var q5 = (from abc in src join abc2 in src on abc.a equals abc2.a select abc);
-				//var q5 = (from abc in src
+				var q6 = from abc in src
+						 select new
+						 {
+							 abc.a,
+							 abc.b
+						 };
+
+				Console.WriteLine("F");
+				foreach(var x in q6)
+					Console.WriteLine("{0} {1}",  x.a, x.b);
+
+				//var q6 = (from abc in src
 				//          join abc2 in src on abc.a equals abc2.a
 				//          select new
 				//          {
-				//              abc.a, abc.b, abc.c, a2 = abc2.a, b2 = abc2.b, c2 = abc2.c
+				//              abc.a,
+				//              abc.b,
+				//              abc.c,
+				//              a2 = abc2.a,
+				//              b2 = abc2.b,
+				//              c2 = abc2.c
 				//          });
 			}
 		}
