@@ -750,6 +750,22 @@ public:
 			return QueryTableColumns(Session->_JetSesid, _TableID->_JetTableID)->Values;
 		}
 	}
+
+	property array<Index ^> ^Indexes
+	{
+		array<Index ^> ^get()
+		{
+			int index_ct = 0;
+
+			EseException::RaiseOnError(JetGetTableIndexInfo(Session->_JetSesid, _TableID->_JetTableID, null, &index_ct, sizeof index_ct, JET_IdxInfoCount));
+
+			array<Index ^> ^indexes = gcnew array<Index ^>(index_ct);
+
+			Index::CollectInformation(Session->_JetSesid, _TableID->_JetTableID, "", indexes);
+
+			return indexes;
+		}
+	}
 };
 
 

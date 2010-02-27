@@ -106,7 +106,6 @@ namespace Test.Functionality
 				CustomerIx = newixs[0];
 				CustomerNameIx = newixs[1];
 
-
 				tco = Table.CreateOptions.NewWithLists("OrderLine");
 				tco.Columns.Add(new Column.CreateOptions("Order", Column.Type.Long));
 				tco.Columns.Add(new Column.CreateOptions("Seq", Column.Type.Long));

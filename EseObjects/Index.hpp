@@ -55,12 +55,16 @@ internal:
 
 private:
 	JET_GRBIT _JetFlags;
-	ulong _ColumnCount;
 	ulong _LCID;
 	ulong _VarSegMax;
 	ushort _KeyMaxBytes;
 	String ^_IndexName;
 	array<KeyColumn> ^_KeyColumns;
+
+	//nearly empty to populate via RetrieveInfo on a list
+	Index() :
+		_JetIndexID(new JET_INDEXID)
+	{}
 
 	!Index()
 	{
@@ -80,79 +84,123 @@ internal:
 		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, _JetIndexID, sizeof(JET_INDEXID), JET_IdxInfoIndexId));
 	}
 
-private:
-	void CollectInformation(JET_SESID sesid, JET_TABLEID tableid, char const *indexname)
+	static bool CollectInformation(JET_SESID sesid, JET_TABLEID tableid, char const *indexname_filter, array<Index ^> ^indexes)
 	{
+		JET_ERR status;
 		JET_INDEXLIST jil = {sizeof jil};
 
-		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, &jil, sizeof jil, JET_IdxInfo));
+		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname_filter, &jil, sizeof jil, JET_IdxInfo));
 
-		//temp holding variables, used to hold retrieved values on the stack
-		ulong local_ulong;
-		ushort local_ushort;
+		int index_count = indexes->Length;
 
 		try
 		{
-			EseException::RaiseOnError(JetMove(sesid, tableid, JET_MoveFirst, 0));
-
-			EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidgrbitIndex, &local_ulong, sizeof local_ulong, null, 0, null));
-			_JetFlags = local_ulong;
-
-			EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidcKey, &local_ulong, sizeof local_ulong, null, 0, null));
-			_KeyColumns = gcnew array<KeyColumn>(local_ulong);
-
-			ulong i = 0;
-
-			do
+			status = JetMove(sesid, jil.tableid, JET_MoveFirst, 0);
+			switch(status)
 			{
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidcoltyp, &local_ulong, sizeof local_ulong, null, 0, null));
-				_KeyColumns[i].Type = safe_cast<Column::Type>(local_ulong);
+			case JET_errSuccess:
+				break;
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidCountry, &local_ushort, sizeof local_ushort, null, 0, null));
-				_KeyColumns[i].Country = local_ushort;
+			case JET_errNoCurrentRecord:
+				return false; //unexpeted end of dataset
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidLangid, &local_ushort, sizeof local_ushort, null, 0, null));
-				_KeyColumns[i].Langid = local_ushort;
+			default:
+				EseException::RaiseOnError(status);
+			}
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidCp, &local_ushort, sizeof local_ushort, null, 0, null));
-				_KeyColumns[i].CP = safe_cast<Column::CodePage>(local_ushort);
+			for(int i = 0; i < index_count; i++)
+			{
+				//temp holding variables, used to hold retrieved values on the stack (as opposed to pinning the member fields)
+				ulong local_ulong;
+				ushort local_ushort;
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidCollate, &local_ushort, sizeof local_ushort, null, 0, null));
-				_KeyColumns[i].Collate = local_ushort;
+				if(indexes[i] == nullptr)
+					indexes[i] = gcnew Index();
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidgrbitColumn, &local_ulong, sizeof local_ulong, null, 0, null));
-				_KeyColumns[i].SortDescending = local_ulong == JET_bitKeyDescending ? true : false; //JET_bitKeyDescending is defined as 1 and JET_bitKeyAscending as 0 anyway
+				EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidgrbitIndex, &local_ulong, sizeof local_ulong, null, 0, null));
+				indexes[i]->_JetFlags = local_ulong;
 
-				EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidLCMapFlags, &local_ulong, sizeof local_ulong, null, 0, null));
-				_KeyColumns[i].MapFlags = UnicodeMapFlagsFromBits(local_ulong);
+				int key_count = 1;
+				EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidcColumn, &key_count, sizeof key_count, null, 0, null));
 
+				array<KeyColumn> ^KeyColumns = gcnew array<KeyColumn>(key_count);
+				indexes[i]->_KeyColumns = KeyColumns;
+
+				char retrieved_index_name[JET_cbNameMost+1];
+				ulong retrieved_index_name_len = 0;
+
+				EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidindexname, retrieved_index_name, sizeof retrieved_index_name, &retrieved_index_name_len, 0, null));
+				retrieved_index_name[retrieved_index_name_len] = null;
+				indexes[i]->_IndexName = marshal_as<String ^>(retrieved_index_name);
+
+				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ulong, sizeof local_ulong, JET_IdxInfoLCID));
+				indexes[i]->_LCID = local_ulong;
+
+				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ushort, sizeof local_ushort, JET_IdxInfoVarSegMac));
+				indexes[i]->_VarSegMax = local_ushort;
+
+				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ushort, sizeof local_ushort, JET_IdxInfoKeyMost));
+				indexes[i]->_KeyMaxBytes = local_ushort;
+
+				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, indexes[i]->_JetIndexID, sizeof(JET_INDEXID), JET_IdxInfoIndexId));
+
+				for(int j = 0; j < key_count; j++)
 				{
-					char colname[JET_cbNameMost + 1] = {0};
-					ulong name_len = 0;
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidcoltyp, &local_ulong, sizeof local_ulong, null, 0, null));
+					KeyColumns[j].Type = safe_cast<Column::Type>(local_ulong);
 
-					EseException::RaiseOnError(JetRetrieveColumn(sesid, tableid, jil.columnidcolumnname, colname, sizeof colname, &name_len, 0, null));
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidCountry, &local_ushort, sizeof local_ushort, null, 0, null));
+					KeyColumns[j].Country = local_ushort;
 
-					_KeyColumns[i].Name = astring_from_memblock(colname, name_len);
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidLangid, &local_ushort, sizeof local_ushort, null, 0, null));
+					KeyColumns[j].Langid = local_ushort;
+
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidCp, &local_ushort, sizeof local_ushort, null, 0, null));
+					KeyColumns[j].CP = safe_cast<Column::CodePage>(local_ushort);
+
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidCollate, &local_ushort, sizeof local_ushort, null, 0, null));
+					KeyColumns[j].Collate = local_ushort;
+
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidgrbitColumn, &local_ulong, sizeof local_ulong, null, 0, null));
+					KeyColumns[j].SortDescending = local_ulong == JET_bitKeyDescending ? true : false; //JET_bitKeyDescending is defined as 1 and JET_bitKeyAscending as 0 anyway
+
+					EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidLCMapFlags, &local_ulong, sizeof local_ulong, null, 0, null));
+					KeyColumns[j].MapFlags = UnicodeMapFlagsFromBits(local_ulong);
+
+					{
+						char colname[JET_cbNameMost + 1] = {0};
+						ulong name_len = 0;
+
+						EseException::RaiseOnError(JetRetrieveColumn(sesid, jil.tableid, jil.columnidcolumnname, colname, sizeof colname, &name_len, 0, null));
+
+						KeyColumns[j].Name = astring_from_memblock(colname, name_len);
+					}
+
+					status = JetMove(sesid, jil.tableid, JET_MoveNext, 0);
+
+					switch(status)
+					{
+					case JET_errSuccess:
+						break;
+
+					case JET_errNoCurrentRecord:
+						if(j+1 == key_count)
+							return true;
+						else
+							return false; //unexpected end of data
+
+					default:
+						EseException::RaiseOnError(status);
+					}
 				}
-				
-				i++;
-			}while(JetMove(sesid, tableid, JET_MoveNext, 0) == JET_errSuccess);
+			}
 		}
 		finally
 		{
 			JetCloseTable(sesid, jil.tableid);
 		}
 
-		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, &local_ulong, sizeof local_ulong, JET_IdxInfoLCID));
-		_LCID = local_ulong;
-
-		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, &local_ushort, sizeof local_ushort, JET_IdxInfoVarSegMac));
-		_VarSegMax = local_ushort;
-
-		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, &local_ushort, sizeof local_ushort, JET_IdxInfoKeyMost));
-		_KeyMaxBytes = local_ushort;
-
-		EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, indexname, _JetIndexID, sizeof(JET_INDEXID), JET_IdxInfoIndexId));
+		return true;
 	}
 
 public:
@@ -414,7 +462,6 @@ internal:
 		
 		array<String ^> ^ColNames = co.KeyColumns->Split(delimiters);
 		
-		_ColumnCount = ColNames->Length;
 		_KeyColumns = gcnew array<KeyColumn>(ColNames->Length);
 
 		ulong i = 0;
@@ -438,7 +485,11 @@ public:
 		JET_TABLEID tableid = GetTableTableID(Table);
 		JET_SESID sesid = GetTableSesid(Table);
 
-		CollectInformation(sesid, tableid, index_namestr);
+		array<Index ^> ^ix_arr = gcnew array<Index ^>(1);
+		ix_arr[0] = this;
+
+		if(!CollectInformation(sesid, tableid, index_namestr, ix_arr))
+			throw gcnew ArgumentException("Unexpected end of index results");
 	}
 
 	///<summary>Creates a new index on the specified table. Calls JetCreateIndex2.</summary>
@@ -469,7 +520,7 @@ public:
 public:
 	property ulong ColumnCount
 	{
-		ulong get() {return _ColumnCount;}
+		ulong get() {return _KeyColumns->Length;}
 	}
 
 	property ulong LCID
