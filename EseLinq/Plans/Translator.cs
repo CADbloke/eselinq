@@ -339,9 +339,7 @@ namespace EseLinq.Plans
 
 					var query = val as QueryProperties;
 					if(query != null)
-					{
 						return CloneQuery(query);
-					}
 					
 					return new Upstream(new Channel(new Constant(val), exp.Type));
 				}
@@ -358,6 +356,12 @@ namespace EseLinq.Plans
 					{
 					case RowPlanType.Table:
 						return new Upstream(new Channel(tplan.plan, field.Name, exp.Type));
+
+					case RowPlanType.Calc:
+						return new Upstream(new Channel(new FieldAccess(tplan.cplan, field), exp.Type));
+					
+					default:
+						throw IDontKnowWhatToDoWithThis(exp);
 					}
 				}
 			}
@@ -416,6 +420,25 @@ namespace EseLinq.Plans
 
 						return new Upstream(new Channel((Plan)hashtab, (CalcPlan)hashtab, exp.Type));
 					}
+				case "Join":
+					{
+						var outer = Translate(exp.Arguments[0], downs);
+						downs.context = new Channel[] { outer.chan };
+						var outer_key = Translate(exp.Arguments[2], downs);
+
+						var inner = Translate(exp.Arguments[1], downs);
+						downs.context = new Channel[] { inner.chan };
+						var inner_key = Translate(exp.Arguments[3], downs);
+
+						var join = new MemoryHashJoinPlan(inner.plan, inner_key.chan.AsCalcPlan(), inner.chan.AsCalcPlan(), outer.plan, outer_key.chan.AsCalcPlan());
+
+						downs.context = new Channel[] { new Channel(join, exp.Arguments[1].Type), outer.chan };
+
+						var body = Translate(exp.Arguments[4], downs);
+
+						return new Upstream(body.chan, join);
+					}
+						
 				default:
 					throw IDontKnowWhatToDoWithThis(exp);
 				}

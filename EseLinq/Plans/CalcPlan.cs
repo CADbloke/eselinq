@@ -62,6 +62,53 @@ namespace EseLinq.Plans
 		}
 	}
 
+	internal class FieldAccess : CalcPlan
+	{
+		CalcPlan src;
+		FieldInfo field_info;
+
+		internal FieldAccess(CalcPlan src, FieldInfo field_info)
+		{
+			this.src = src;
+			this.field_info = field_info;
+		}
+
+		public Calc ToCalc(OperatorMap om)
+		{
+			return new Op(src.ToCalc(om), this);
+		}
+
+		internal class Op : Calc
+		{
+			readonly Calc src;
+			readonly FieldAccess plan;
+
+			internal Op(Calc src, FieldAccess plan)
+			{
+				this.src = src;
+				this.plan = plan;
+			}
+
+			public object value
+			{
+				get
+				{
+					return plan.field_info.GetValue(src.value);
+				}
+			}
+
+			public void Dispose()
+			{
+				src.Dispose();
+			}
+		}
+
+		public void Dispose()
+		{
+			src.Dispose();
+		}
+	}
+
 	internal class Constant : CalcPlan
 	{
 		internal readonly object value;
