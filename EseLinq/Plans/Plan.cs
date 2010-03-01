@@ -48,18 +48,15 @@ namespace EseLinq.Plans
 		/// Tables underlying this plan node. Multiple tables are possible after a join.
 		/// </summary>
 		internal readonly Table table;
-		internal readonly MemoryTable mtable;
 
 		protected Plan()
 		{
 			this.table = null;
-			this.mtable = null;
 		}
 
-		protected Plan(Table table, MemoryTable mtable)
+		protected Plan(Table table)
 		{
 			this.table = table;
-			this.mtable = mtable;
 		}
 
 		//TODO: should only be called from OperatorMap
@@ -77,18 +74,15 @@ namespace EseLinq.Plans
 		/// Should be the same count and order as Plan.tables;
 		/// </summary>
 		internal readonly Cursor cursor;
-		internal readonly MemoryCursor mcursor;
 
 		protected Operator()
 		{
 			this.cursor = null;
-			this.mcursor = null;
 		}
 
-		protected Operator(Cursor cursor, MemoryCursor mcursor)
+		protected Operator(Cursor cursor)
 		{
 			this.cursor = cursor;
-			this.mcursor = mcursor;
 		}
 
 		internal abstract Plan plan
@@ -114,37 +108,6 @@ namespace EseLinq.Plans
 	internal interface CalcPlan : IDisposable
 	{
 		Calc ToCalc(OperatorMap om);
-	}
-
-	interface MemoryTable : IDisposable
-	{
-		MemoryCursor ToMemoryCursor(OperatorMap om);
-
-		Type ObjType
-		{
-			get;
-		}
-		Type ElemType
-		{
-			get;
-		}
-	}
-
-	interface MemoryCursor : IDisposable
-	{
-		MemoryTable MTable
-		{
-			get;
-		}
-
-		IEnumerable CurrentEnumerable
-		{
-			get;
-		}
-		IEnumerator CurrentEnumerator
-		{
-			get;
-		}
 	}
 
 	internal class Filter : Plan

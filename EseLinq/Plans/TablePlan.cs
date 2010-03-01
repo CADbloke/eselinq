@@ -13,7 +13,7 @@ namespace EseLinq.Plans
 	internal class Scan : Plan
 	{
 		internal Scan(Table table)
-			: base(table, null)
+			: base(table)
 		{}
 
 		internal override Operator ToOperator(OperatorMap om)
@@ -36,7 +36,7 @@ namespace EseLinq.Plans
 			internal readonly Scan scan;
 
 			internal Op(Plans.Scan scab, Cursor cursor)
-				: base(cursor, null)
+				: base(cursor)
 			{
 				this.scan = scab;
 				cursor.MoveFirst();

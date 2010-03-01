@@ -10,7 +10,7 @@ using EseLinq.Storage;
 
 namespace EseLinq.Plans
 {
-	internal class MemoryHashDisctinctPlan : Plan, MemoryTable, CalcPlan
+	internal class MemoryHashDisctinctPlan : Plan, CalcPlan
 	{
 		readonly Plan src;
 		readonly CalcPlan value_src;
@@ -33,33 +33,12 @@ namespace EseLinq.Plans
 			return new MemoryHashDisctinctPlan(cm.Demand(src), value_src, elem_type);
 		}
 
-		public MemoryCursor ToMemoryCursor(OperatorMap om)
-		{
-			return (MemoryCursor)om[this];
-		}
-
 		public Calc ToCalc(OperatorMap om)
 		{
 			return (Calc)om[this];
 		}
 
-		public Type ObjType
-		{
-			get
-			{
-				return elem_type;
-			}
-		}
-
-		public Type ElemType
-		{
-			get
-			{
-				return typeof(HashSet<object>);
-			}
-		}
-
-		internal class Op : Operator, MemoryCursor, Calc
+		internal class Op : Operator, Calc
 		{
 			readonly MemoryHashDisctinctPlan mtable;
 
@@ -92,33 +71,7 @@ namespace EseLinq.Plans
 				}
 			}
 
-			public IEnumerable CurrentEnumerable
-			{
-				get
-				{
-					Populate();
-					return hashset;
-				}
-			}
-
-			public IEnumerator CurrentEnumerator
-			{
-				get
-				{
-					Populate();
-					return position;
-				}
-			}
-
 			internal override Plan plan
-			{
-				get
-				{
-					return mtable;
-				}
-			}
-
-			public MemoryTable MTable
 			{
 				get
 				{

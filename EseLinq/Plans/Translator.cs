@@ -13,7 +13,7 @@ namespace EseLinq.Plans
 	/// </summary>
 	class Translator
 	{
-		internal enum RowPlanType
+		internal enum ChannelType
 		{
 			/// <summary>
 			/// Default. All fields null.
@@ -32,10 +32,6 @@ namespace EseLinq.Plans
 			/// </summary>
 			Table,
 			/// <summary>
-			/// Memory stored table. Agg. fields determined by table definition.
-			/// </summary>
-			MemoryTable,
-			/// <summary>
 			/// Mapping of fields after New or selection into a nonsource composite. Agg. fields by type.
 			/// </summary>
 			Collection
@@ -43,16 +39,16 @@ namespace EseLinq.Plans
 
 		internal struct Channel
 		{
-			internal readonly RowPlanType rptype;
-
+			internal readonly ChannelType chtype;
+			
 			//only some are populated, based on rptype
 			internal readonly CalcPlan cplan;
 			internal readonly Plan plan;
 			internal readonly Table table;
-			internal readonly MemoryTable mtable;
 			internal readonly Column column;
 			internal readonly Type type;
 			internal readonly Dictionary<string, Channel> fields;
+			internal readonly ConstructorInfo coninfo;
 
 			/// <summary>
 			/// Calculation without associated plan.
@@ -61,29 +57,13 @@ namespace EseLinq.Plans
 			{
 				this.cplan = cplan;
 				this.type = type;
-				rptype = RowPlanType.Calc;
+				chtype = ChannelType.Calc;
 
 				this.plan = null;
 				this.table = null;
-				this.mtable = null;
 				this.column = null;
 				this.fields = null;
-			}
-
-			/// <summary>
-			/// Plan with a specific single memory table.
-			/// </summary>
-			internal Channel(Plan plan, MemoryTable mtable, Type type)
-			{
-				this.plan = plan;
-				this.type = type;
-				this.mtable = mtable;
-				rptype = RowPlanType.Table;
-
-				this.table = null;
-				this.cplan = null;
-				this.column = null;
-				this.fields = null;
+				this.coninfo = null;
 			}
 
 			/// <summary>
@@ -94,12 +74,12 @@ namespace EseLinq.Plans
 				this.plan = plan;
 				this.type = type;
 				this.table = table;
-				rptype = RowPlanType.Table;
+				chtype = ChannelType.Table;
 
 				this.cplan = null;
 				this.column = null;
-				this.mtable = null;
 				this.fields = null;
+				this.coninfo = null;
 			}
 
 			/// <summary>
@@ -111,11 +91,11 @@ namespace EseLinq.Plans
 				this.table = table;
 				this.column = column;
 				this.type = type;
-				rptype = RowPlanType.Column;
+				chtype = ChannelType.Column;
 
 				this.cplan = null;
-				this.mtable = null;
 				this.fields = null;
+				this.coninfo = null;
 			}
 
 			/// <summary>
@@ -137,11 +117,11 @@ namespace EseLinq.Plans
 				table = plan.table;
 				column = found_col;
 				this.type = type;
-				rptype = RowPlanType.Column;
+				chtype = ChannelType.Column;
 
 				this.cplan = null;
-				this.mtable = null;
 				this.fields = null;
+				this.coninfo = null;
 			}
 
 			/// <summary>
@@ -152,30 +132,47 @@ namespace EseLinq.Plans
 				this.plan = plan;
 				this.type = type;
 				this.cplan = cplan;
-				rptype = RowPlanType.Calc;
+				chtype = ChannelType.Calc;
 				
 				this.table = null;
-				this.mtable = null;
 				this.column = null;
 				this.fields = null;
+				this.coninfo = null;
+			}
+
+			internal Channel(Plan plan, Dictionary<string, Channel> fields, ConstructorInfo coninfo)
+			{
+				this.plan = plan;
+				this.fields = fields;
+				this.coninfo = coninfo;
+				this.type = coninfo.DeclaringType;
+				chtype = ChannelType.Collection;
+
+				this.cplan = null;
+				this.table = null;
+				this.column = null;
 			}
 
 			internal CalcPlan AsCalcPlan(Type type)
 			{
-				switch(rptype)
+				switch(chtype)
 				{
-				case RowPlanType.Calc:
+				case ChannelType.Calc:
 					return cplan;
 
-				case RowPlanType.Column:
+				case ChannelType.Column:
 					return new Retrieve(plan, table, column, type);
 
-				case RowPlanType.Table:
+				case ChannelType.Table:
 					return MakeObject.AutoCreate(plan, type);
 
-				case RowPlanType.MemoryTable:
-				case RowPlanType.Collection:
-					throw new ApplicationException("TODO: fixme");
+				case ChannelType.Collection:
+					{
+						CalcPlan[] arguments = (from chan in fields.Values
+											   select chan.AsCalcPlan()).ToArray();
+
+						return new MakeObjectFromConstructor(arguments, coninfo);
+					}
 
 				default:
 					throw new ArgumentException("Invalid rptype");
@@ -191,7 +188,6 @@ namespace EseLinq.Plans
 		internal struct Downstream
 		{
 			internal Dictionary<string, Channel> env;
-			//internal Plan context;
 			internal Channel[] context;
 
 			///<summary>use this constructor when about to make modifications; copies mutable members</summary>
@@ -352,13 +348,16 @@ namespace EseLinq.Plans
 					var field = (FieldInfo)exp.Member;
 					var tplan = downs.env[as_parm.Name];
 
-					switch(tplan.rptype)
+					switch(tplan.chtype)
 					{
-					case RowPlanType.Table:
+					case ChannelType.Table:
 						return new Upstream(new Channel(tplan.plan, field.Name, exp.Type));
 
-					case RowPlanType.Calc:
+					case ChannelType.Calc:
 						return new Upstream(new Channel(new FieldAccess(tplan.cplan, field), exp.Type));
+
+					case ChannelType.Collection:
+						return new Upstream(tplan.fields[field.Name]);
 					
 					default:
 						throw IDontKnowWhatToDoWithThis(exp);
@@ -467,14 +466,12 @@ namespace EseLinq.Plans
 
 		internal static Upstream Translate(NewExpression exp, Downstream downs)
 		{
-			CalcPlan[] arguments = new CalcPlan[exp.Arguments.Count];
+			var fields = new Dictionary<string, Channel>(exp.Arguments.Count);
 
 			for(int i = 0; i < exp.Arguments.Count; i++)
-				arguments[i] = Translate(exp.Arguments[i], downs).chan.AsCalcPlan();
+				fields.Add(exp.Members[i].Name, Translate(exp.Arguments[i], downs).chan);
 
-			var calc = new MakeObjectFromConstructor(arguments, exp.Constructor);
-
-			return new Upstream(new Channel(calc, exp.Type));
+			return new Upstream(new Channel(null, fields, exp.Constructor));
 		}
 
 		internal static Upstream Translate(ParameterExpression exp, Downstream downs)
