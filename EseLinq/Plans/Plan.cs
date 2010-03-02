@@ -42,59 +42,35 @@ namespace EseLinq.Plans
 		}
 	}
 	
-	abstract class Plan : IDisposable
+	interface Plan : IDisposable
 	{
 		/// <summary>
 		/// Tables underlying this plan node. Multiple tables are possible after a join.
 		/// </summary>
-		internal readonly Table table;
-
-		protected Plan()
+		Table table
 		{
-			this.table = null;
+			get;
 		}
-
-		protected Plan(Table table)
-		{
-			this.table = table;
-		}
-
-		//TODO: should only be called from OperatorMap
-		internal abstract Operator ToOperator(OperatorMap om);
-		internal abstract Plan Clone(CloneMap cm);
-
-		public virtual void Dispose()
-		{}
+		Operator ToOperator(OperatorMap om);
+		Plan Clone(CloneMap cm);
 	}
 
-	internal abstract class Operator : IDisposable
+	internal interface Operator : IDisposable
 	{
 		/// <summary>
 		/// Cursors underlying this operator. Multiple cursors are possible after a join.
 		/// Should be the same count and order as Plan.tables;
 		/// </summary>
-		internal readonly Cursor cursor;
-
-		protected Operator()
-		{
-			this.cursor = null;
-		}
-
-		protected Operator(Cursor cursor)
-		{
-			this.cursor = cursor;
-		}
-
-		internal abstract Plan plan
+		Cursor cursor
 		{
 			get;
 		}
-
-		internal abstract bool Advance();
-		internal virtual void Reset()
-		{}
-		public virtual void Dispose()
-		{}
+		Plan plan
+		{
+			get;
+		}
+		bool Advance();
+		void Reset();
 	}
 
 	internal interface Calc : IDisposable
@@ -121,14 +97,28 @@ namespace EseLinq.Plans
 			this.predicate = predicate;
 		}
 
-		internal override Operator ToOperator(OperatorMap om)
+		public Operator ToOperator(OperatorMap om)
 		{
 			return new Op(this, om.Demand(src), om);
 		}
 
-		internal override Plan Clone(CloneMap cm)
+		public Plan Clone(CloneMap cm)
 		{
 			return new Filter(cm.Demand(src), predicate);
+		}
+
+		public Table table
+		{
+			get
+			{
+				return null;
+			}
+		}
+
+		public void Dispose()
+		{
+			src.Dispose();
+			predicate.Dispose();
 		}
 
 		internal class Op : Operator
@@ -144,7 +134,7 @@ namespace EseLinq.Plans
 				this.predicate = filter.predicate.ToCalc(om);
 			}
 
-			internal override bool Advance()
+			public bool Advance()
 			{
 				while(src.Advance())
 					if(predicate.value.Equals(true)) //found a matching record
@@ -154,12 +144,31 @@ namespace EseLinq.Plans
 				return false;
 			}
 
-			internal override Plan plan
+			public Plan plan
 			{
 				get
 				{
 					return filter;
 				}
+			}
+
+			public Cursor cursor
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public void Reset()
+			{
+				src.Reset();
+			}
+
+			public void Dispose()
+			{
+				src.Dispose();
+				predicate.Dispose();
 			}
 		}
 	}
@@ -175,14 +184,27 @@ namespace EseLinq.Plans
 			this.inner = inner;
 		}
 
-		internal override Operator ToOperator(OperatorMap om)
+		public Operator ToOperator(OperatorMap om)
 		{
 			return new Op(this, om.Demand(outer), om.Demand(inner));
 		}
 
-		internal override Plan Clone(CloneMap cm)
+		public Plan Clone(CloneMap cm)
 		{
 			return new Product(cm.Demand(outer), cm.Demand(inner));
+		}
+
+		public Table table
+		{
+			get
+			{
+				return null;
+			}
+		}
+
+		public void Dispose()
+		{
+			throw new NotImplementedException();
 		}
 
 		internal class Op : Operator
@@ -200,7 +222,7 @@ namespace EseLinq.Plans
 				outer.Advance(); //incr to 1st element
 			}
 
-			internal override Plan plan
+			public Plan plan
 			{
 				get
 				{
@@ -208,7 +230,7 @@ namespace EseLinq.Plans
 				}
 			}
 
-			internal override bool Advance()
+			public bool Advance()
 			{
 				if(!inner.Advance())
 				{
@@ -217,6 +239,28 @@ namespace EseLinq.Plans
 				}
 
 				return true;
+			}
+
+			public Cursor cursor
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public void Reset()
+			{
+				inner.Reset();
+				outer.Reset();
+
+				outer.Advance(); //incr to 1st element
+			}
+
+			public void Dispose()
+			{
+				inner.Dispose();
+				outer.Dispose();
 			}
 		}
 	}

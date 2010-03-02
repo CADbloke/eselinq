@@ -1,1 +1,1 @@
-﻿
+﻿-Modify EseLinq.Storage.Flat, etc to construct and compile a LambdaExpression for performance.

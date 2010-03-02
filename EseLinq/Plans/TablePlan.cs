@@ -12,57 +12,77 @@ namespace EseLinq.Plans
 {
 	internal class Scan : Plan
 	{
-		internal Scan(Table table)
-			: base(table)
-		{}
+		readonly Table table;
 
-		internal override Operator ToOperator(OperatorMap om)
+		internal Scan(Table table)
+		{
+			this.table = table;
+		}
+
+		public Operator ToOperator(OperatorMap om)
 		{
 			return new Op(this, new Cursor(table));
 		}
 
-		internal override Plan Clone(CloneMap cm)
+		public Plan Clone(CloneMap cm)
 		{
 			return new Scan(table);
 		}
 
-		public override void Dispose()
+		Table Plan.table
+		{
+			get
+			{
+				return table;
+			}
+		}
+
+		public void Dispose()
 		{
 			table.Dispose();
 		}
 
 		internal class Op : Operator
 		{
+			readonly Cursor cursor;
 			internal readonly Scan scan;
 
 			internal Op(Plans.Scan scab, Cursor cursor)
-				: base(cursor)
 			{
+				this.cursor = cursor;
 				this.scan = scab;
 				cursor.MoveFirst();
 				cursor.Move(-1);
 			}
 
-			internal override bool Advance()
+			public bool Advance()
 			{
 				return cursor.Move(1);
 			}
 
-			internal override void Reset()
+			public void Reset()
 			{
 				cursor.MoveFirst();
 			}
 
-			public override void Dispose()
+			public void Dispose()
 			{
 				cursor.Dispose();
 			}
 
-			internal override Plan plan
+			public Plan plan
 			{
 				get
 				{
 					return scan;
+				}
+			}
+
+			Cursor Operator.cursor
+			{
+				get
+				{
+					return cursor;
 				}
 			}
 		}

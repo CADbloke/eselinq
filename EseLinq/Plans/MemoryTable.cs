@@ -23,12 +23,12 @@ namespace EseLinq.Plans
 			this.elem_type = elem_type;
 		}
 
-		internal override Operator ToOperator(OperatorMap om)
+		public Operator ToOperator(OperatorMap om)
 		{
 			return new Op(this, om.Demand(src), value_src.ToCalc(om));
 		}
 
-		internal override Plan Clone(CloneMap cm)
+		public Plan Clone(CloneMap cm)
 		{
 			return new MemoryHashDisctinctPlan(cm.Demand(src), value_src, elem_type);
 		}
@@ -36,6 +36,14 @@ namespace EseLinq.Plans
 		public Calc ToCalc(OperatorMap om)
 		{
 			return (Calc)om[this];
+		}
+
+		public Table table
+		{
+			get
+			{
+				return null;
+			}
 		}
 
 		internal class Op : Operator, Calc
@@ -71,7 +79,7 @@ namespace EseLinq.Plans
 				}
 			}
 
-			internal override Plan plan
+			public Plan plan
 			{
 				get
 				{
@@ -79,7 +87,7 @@ namespace EseLinq.Plans
 				}
 			}
 
-			internal override bool Advance()
+			public bool Advance()
 			{
 				Populate();
 				return position.MoveNext();
@@ -92,17 +100,37 @@ namespace EseLinq.Plans
 					return position.Current;
 				}
 			}
+
+			public void Dispose()
+			{
+				src.Dispose();
+				value.Dispose();
+			}
+
+			public Cursor cursor
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public void Reset()
+			{
+				position = hashset.GetEnumerator();
+			}
 		}
 
-		void IDisposable.Dispose()
+		public void Dispose()
 		{
 			src.Dispose();
 			value_src.Dispose();
 		}
+
 	}
 
 	/// <summary>
-	/// Builds a hash map (Collections.Dictionary) from the inner source and matches with the outer source.
+	/// Builds a hash map (Collections.Dictionary of Lists) from the inner source and matches with the outer source.
 	/// </summary>
 	internal class MemoryHashJoinPlan : Plan, CalcPlan
 	{
@@ -122,12 +150,20 @@ namespace EseLinq.Plans
 			this.outer_key = outer_key;
 		}
 
-		internal override Operator ToOperator(OperatorMap om)
+		public Table table
+		{
+			get
+			{
+				return null;
+			}
+		}
+
+		public Operator ToOperator(OperatorMap om)
 		{
 			return new Op(this, om.Demand(inner_plan), inner_key.ToCalc(om), inner_value.ToCalc(om), om.Demand(outer_plan), outer_key.ToCalc(om));
 		}
 
-		internal override Plan Clone(CloneMap cm)
+		public Plan Clone(CloneMap cm)
 		{
 			return new MemoryHashJoinPlan(cm.Demand(inner_plan), inner_key, inner_value, cm.Demand(outer_plan), outer_key);
 		}
@@ -183,7 +219,7 @@ namespace EseLinq.Plans
 				inner_value.Dispose();
 			}
 
-			internal override Plan plan
+			public Plan plan
 			{
 				get
 				{
@@ -207,7 +243,7 @@ namespace EseLinq.Plans
 				return false; //noting left in outer operator
 			}
 
-			internal override bool Advance()
+			public bool Advance()
 			{
 				if(hashtable == null)
 				{
@@ -229,9 +265,31 @@ namespace EseLinq.Plans
 					return position.Current;
 				}
 			}
+
+			public Cursor cursor
+			{
+				get
+				{
+					throw new NotImplementedException();
+				}
+			}
+
+			public void Reset()
+			{
+				throw new NotImplementedException();
+			}
+
+			public void Dispose()
+			{
+				inner_operator.Dispose();
+				inner_key.Dispose();
+				inner_value.Dispose();
+				outer_operator.Dispose();
+				outer_key.Dispose();
+			}
 		}
 
-		void IDisposable.Dispose()
+		public void Dispose()
 		{
 			inner_plan.Dispose();
 			inner_key.Dispose();

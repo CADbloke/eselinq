@@ -105,13 +105,13 @@ namespace EseLinq.Plans
 			{
 				Column found_col = null;
 
-				//foreach(Table t in plan.tables)
-					foreach(Column c in plan.table.Columns)
-						if(c.Name == colname)
-						{
-							found_col = c;
-							break;
-						}
+				//not necessairily in here, could be using ExpandFieldAttribute
+				foreach(Column c in plan.table.Columns)
+					if(c.Name == colname)
+					{
+						found_col = c;
+						break;
+					}
 
 				this.plan = plan;
 				table = plan.table;
@@ -355,6 +355,10 @@ namespace EseLinq.Plans
 
 					case ChannelType.Calc:
 						return new Upstream(new Channel(new FieldAccess(tplan.cplan, field), exp.Type));
+
+					case ChannelType.Column:
+						//would need to access comma delimited names like ExpandFieldAttribute
+						return new Upstream(new Channel(tplan.plan, tplan.column.Name + "," + field.Name, exp.Type));
 
 					case ChannelType.Collection:
 						return new Upstream(tplan.fields[field.Name]);

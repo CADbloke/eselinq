@@ -82,7 +82,7 @@ public:
 		{
 			return MakeTableFromTableID(_TableID);
 		}
-	}	
+	}
 
 	property EseObjects::Session ^Session
 	{
@@ -681,6 +681,52 @@ public:
 
 		//NEXT: JetSetColumns to set multiple columns?
 
+		///<summary>Copies a value from another cursor without bridging the data. Calls JetRetreiveColumn and JetSetColumn.</summary>
+		virtual void Set(Column ^DestCol, Cursor ^SrcCsr, Column ^SrcCol)
+		{
+			free_list fl;
+			void *buff;
+
+			buff = alloca_array(char, ESEOBJECTS_MAX_ALLOCA);
+
+			ulong buffsz = ESEOBJECTS_MAX_ALLOCA;
+			ulong req_buffsz = 0;
+
+			JET_RETINFO ret_info = {sizeof ret_info};
+
+			ret_info.ibLongValue = 0;
+			ret_info.itagSequence = 1;
+
+			JET_ERR status = JetRetrieveColumn(SrcCsr->Session->_JetSesid, SrcCsr->_TableID->_JetTableID, SrcCol->_JetColID, buff, buffsz, &req_buffsz, 0, &ret_info);
+
+			switch(status)
+			{
+			case JET_errSuccess:
+				break;
+
+			case JET_errInvalidBufferSize:
+			case JET_wrnBufferTruncated:
+			case JET_errBufferTooSmall:
+				//buffer needs to be bigger
+				buff = fl.alloc_array<char>(req_buffsz);
+				buffsz = req_buffsz;
+
+				//this call shouldn't fail in a way we could have fixed here (i.e. buffer too small)
+				EseException::RaiseOnError(JetRetrieveColumn(SrcCsr->Session->_JetSesid,SrcCsr-> _TableID->_JetTableID, SrcCol->_JetColID, buff, buffsz, &req_buffsz, 0, &ret_info));
+				break;
+
+			case JET_wrnColumnNull:
+				EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, DestCol->_JetColID, null, 0, 0, null));
+				
+			default:
+				//if it was some other error, raise it
+				EseException::RaiseOnError(status);
+				break;
+			}
+
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, DestCol->_JetColID, buff, buffsz, buffsz == 0 ? JET_bitSetZeroLength : 0, null));
+		}
+
 		///<summary>Provides access to read the record being updated.</summary>
 		virtual property IReadRecord ^Read
 		{
@@ -710,7 +756,7 @@ public:
 
 				return JetRecSizeToRecordSize(jrs);
 			}
-		};
+		}
 
 		///<summary>Record size measurements of current record being updated or inserted, inclding only data stored in-row.</summary>
 		property RecordSize CurrentLocalRecordSize
@@ -723,7 +769,7 @@ public:
 
 				return JetRecSizeToRecordSize(jrs);
 			}
-		};
+		}
 	};
 
 	///<summary>Prepares to insert a new record. Default column values are used for inital state. Calls JetPrepareUpdate JET_prepInsert.</summary>
