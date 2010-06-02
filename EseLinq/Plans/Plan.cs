@@ -65,6 +65,10 @@ namespace EseLinq.Plans
 		{
 			get;
 		}
+		IList<Column> columns
+		{
+			get;
+		}
 		Plan plan
 		{
 			get;
@@ -84,6 +88,20 @@ namespace EseLinq.Plans
 	internal interface CalcPlan : IDisposable
 	{
 		Calc ToCalc(OperatorMap om);
+	}
+
+	internal interface Writer : IDisposable 
+	{
+		void Write(IWriteRecord wr);
+		Column[] columns
+		{
+			set;
+		}
+	}
+
+	internal interface WriterPlan : IDisposable 
+	{
+		Writer ToWriter(OperatorMap om);
 	}
 
 	internal class Filter : Plan
@@ -153,6 +171,14 @@ namespace EseLinq.Plans
 			}
 
 			public Cursor cursor
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public IList<Column> columns
 			{
 				get
 				{
@@ -242,6 +268,14 @@ namespace EseLinq.Plans
 			}
 
 			public Cursor cursor
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public IList<Column> columns
 			{
 				get
 				{

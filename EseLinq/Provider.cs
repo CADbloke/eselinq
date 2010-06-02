@@ -22,6 +22,21 @@ namespace EseLinq
 		{
 			Translator.Downstream downs = new Translator.Downstream();
 			downs.Init();
+			downs.type_map = Storage.Flat<int>.StandardTypeMap;
+			downs.session = db.Session;
+
+			downs.coltyp_map = new Dictionary<Column.Type, Type>();
+			foreach(var kv in downs.type_map)
+			{
+				try
+				{
+					downs.coltyp_map.Add(kv.Value, kv.Key);
+				}
+				catch(Exception)
+				{
+				}
+			}
+
 			var ups = Translator.Translate(exp, downs);
 
 			return new Query<T>(ups.plan, ups.chan, exp, this);

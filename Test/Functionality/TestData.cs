@@ -89,6 +89,8 @@ namespace Test.Functionality
 				OrderOpenDateIx = newixs[1];
 				OrderCustomerIx = newixs[2];
 
+				new Index(Order, "OpenDateIx");
+
 
 				tco = Table.CreateOptions.NewWithLists("Customer");
 				tco.Columns.Add(new Column.CreateOptions("ID", Column.Type.Long));

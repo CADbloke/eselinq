@@ -32,7 +32,7 @@ namespace EseLinq.Plans
 			/// </summary>
 			Table,
 			/// <summary>
-			/// Mapping of fields after New or selection into a nonsource composite. Agg. fields by type.
+			/// Mapping of fields after New or selection or spool into a nonsource composite. Agg. fields by type.
 			/// </summary>
 			Collection
 		}
@@ -45,10 +45,12 @@ namespace EseLinq.Plans
 			internal readonly CalcPlan cplan;
 			internal readonly Plan plan;
 			internal readonly Table table;
-			internal readonly Column column;
+			internal readonly int column_index;
 			internal readonly Type type;
+			internal readonly Column.Type coltyp;
 			internal readonly Dictionary<string, Channel> fields;
 			internal readonly ConstructorInfo coninfo;
+			internal readonly string name;
 
 			/// <summary>
 			/// Calculation without associated plan.
@@ -61,9 +63,11 @@ namespace EseLinq.Plans
 
 				this.plan = null;
 				this.table = null;
-				this.column = null;
+				this.column_index = 0;
+				this.coltyp = Column.Type.Nil;
 				this.fields = null;
 				this.coninfo = null;
+				this.name = null;
 			}
 
 			/// <summary>
@@ -77,7 +81,30 @@ namespace EseLinq.Plans
 				chtype = ChannelType.Table;
 
 				this.cplan = null;
-				this.column = null;
+				this.column_index = 0;
+				this.coltyp = Column.Type.Nil;
+				this.fields = null;
+				this.coninfo = null;
+				this.name = table.Name;
+			}
+
+			/// <summary>
+			/// Plan with a specific column.
+			/// </summary>
+			internal Channel(Plan plan, Table table, int column_index, Column.Type coltyp, Type type)
+			{
+				if(coltyp == Column.Type.Nil)
+					throw new ArgumentException();
+
+				this.plan = plan;
+				this.table = table;
+				this.column_index = column_index;
+				this.coltyp = coltyp;
+				this.type = type;
+				this.name = table.Columns[column_index].Name;
+				chtype = ChannelType.Column;
+
+				this.cplan = null;
 				this.fields = null;
 				this.coninfo = null;
 			}
@@ -85,15 +112,20 @@ namespace EseLinq.Plans
 			/// <summary>
 			/// Plan with a specific column.
 			/// </summary>
-			internal Channel(Plan plan, Table table, Column column, Type type)
+			internal Channel(Plan plan, int column_index, Column.Type coltyp, Type type)
 			{
+				if(coltyp == Column.Type.Nil)
+					throw new ArgumentException();
+
 				this.plan = plan;
-				this.table = table;
-				this.column = column;
+				this.column_index = column_index;
+				this.coltyp = coltyp;
 				this.type = type;
 				chtype = ChannelType.Column;
 
+				this.name = null;
 				this.cplan = null;
+				this.table = null;
 				this.fields = null;
 				this.coninfo = null;
 			}
@@ -103,25 +135,28 @@ namespace EseLinq.Plans
 			/// </summary>
 			internal Channel(Plan plan, string colname, Type type)
 			{
-				Column found_col = null;
-
 				//not necessairily in here, could be using ExpandFieldAttribute
-				foreach(Column c in plan.table.Columns)
-					if(c.Name == colname)
+				var columns = plan.table.Columns;
+
+				for(int i = 0; i < columns.Count; i++)
+					if(columns[i].Name == colname)
 					{
-						found_col = c;
-						break;
+						this.plan = plan;
+						table = plan.table;
+						column_index = i;
+						this.type = type;
+						this.name = table.Columns[i].Name;
+						this.coltyp = columns[i].ColumnType;
+						chtype = ChannelType.Column;
+
+						this.cplan = null;
+						this.fields = null;
+						this.coninfo = null;
+
+						return;
 					}
 
-				this.plan = plan;
-				table = plan.table;
-				column = found_col;
-				this.type = type;
-				chtype = ChannelType.Column;
-
-				this.cplan = null;
-				this.fields = null;
-				this.coninfo = null;
+				throw new ApplicationException("Column not found:" + colname);
 			}
 
 			/// <summary>
@@ -135,9 +170,11 @@ namespace EseLinq.Plans
 				chtype = ChannelType.Calc;
 				
 				this.table = null;
-				this.column = null;
+				this.column_index = 0;
 				this.fields = null;
+				this.coltyp = Column.Type.Nil;
 				this.coninfo = null;
+				this.name = null;
 			}
 
 			internal Channel(Plan plan, Dictionary<string, Channel> fields, ConstructorInfo coninfo)
@@ -150,7 +187,24 @@ namespace EseLinq.Plans
 
 				this.cplan = null;
 				this.table = null;
-				this.column = null;
+				this.column_index = 0;
+				this.coltyp = Column.Type.Nil;
+				this.name = null;
+			}
+
+			internal Channel(Plan plan, Dictionary<string, Channel> fields, Type type)
+			{
+				this.plan = plan;
+				this.fields = fields;
+				this.type = type;
+				chtype = ChannelType.Collection;
+
+				this.cplan = null;
+				this.table = null;
+				this.column_index = 0;
+				this.coltyp = Column.Type.Nil;
+				this.coninfo = null;
+				this.name = null;
 			}
 
 			internal CalcPlan AsCalcPlan(Type type)
@@ -161,7 +215,7 @@ namespace EseLinq.Plans
 					return cplan;
 
 				case ChannelType.Column:
-					return new Retrieve(plan, table, column, type);
+					return new Retrieve(plan, column_index, type);
 
 				case ChannelType.Table:
 					return MakeObject.AutoCreate(plan, type);
@@ -171,8 +225,115 @@ namespace EseLinq.Plans
 						CalcPlan[] arguments = (from chan in fields.Values
 											   select chan.AsCalcPlan()).ToArray();
 
-						return new MakeObjectFromConstructor(arguments, coninfo);
+						if(coninfo == null)
+							return MakeObject.AutoCreate(plan, type);
+						else
+							return new MakeObjectFromConstructor(arguments, coninfo);
 					}
+
+				default:
+					throw new ArgumentException("Invalid rptype");
+				}
+			}
+
+			internal WriterPlan AsWriterPlan(int dst_index)
+			{
+				switch(chtype)
+				{
+				case ChannelType.Calc:
+					throw new NotImplementedException();
+
+				case ChannelType.Column:
+					return new DirectCopy(plan, column_index, dst_index);
+
+				case ChannelType.Table:
+					throw new NotImplementedException();
+
+				case ChannelType.Collection:
+					throw new NotImplementedException();
+
+				default:
+					throw new ArgumentException("Invalid rptype");
+				}
+			}
+
+			internal Dictionary<string, Channel> AsFieldList(Downstream opts)
+			{
+				switch(chtype)
+				{
+				case ChannelType.Calc:
+					{
+						var ret = new Dictionary<string, Channel>();
+
+						//special case for atomic types
+						if(opts.type_map.ContainsKey(type))
+						{
+							ret.Add("#SINGLETON", this);
+							return ret;
+						}
+					
+						foreach(FieldInfo fi in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+							if(null == Attribute.GetCustomAttribute(fi, typeof(Storage.NonpersistentFieldAttribute))) //don't save if nonpersistent
+								ret.Add(fi.Name, new Channel(new FieldAccess(cplan, fi), fi.FieldType));
+
+						//TODO: needs property access adapter
+						//foreach(PropertyInfo pi in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+						//    if(null == Attribute.GetCustomAttribute(pi, typeof(PersistentPropertyAttribute))) //only save if a persistent property
+						//        MakeColumnCreateOptions(tco.Columns, pi, pi.PropertyType, "", TypeMap);
+
+						return ret;
+					}
+
+				case ChannelType.Column:
+					{
+						var ret = new Dictionary<string, Channel>();
+
+						ret.Add("#SINGLETON", this);
+
+						return ret;
+					}
+
+				case ChannelType.Table:
+					{
+						var ret = new Dictionary<string, Channel>();
+
+						IList<Column> cols = table.Columns;
+
+						for(int i = 0; i < cols.Count; i++)
+							ret.Add(cols[i].Name, new Channel(plan, table, i, cols[i].ColumnType, opts.coltyp_map[cols[i].ColumnType]));
+
+						return ret;
+					}
+
+				case ChannelType.Collection:
+					return fields;
+
+				default:
+					throw new ArgumentException("Invalid rptype");
+				}
+			}
+
+			internal Column.CreateOptions AsCreateColumn(Downstream opts)
+			{
+				switch(chtype)
+				{
+				case ChannelType.Calc:
+					return new Column.CreateOptions
+					{
+						Type = opts.type_map[type]
+					};
+
+				case ChannelType.Column:
+					return new Column.CreateOptions
+					{
+						Type = coltyp,
+						CP = coltyp == Column.Type.LongText ? Column.CodePage.Unicode : Column.CodePage.Zero
+					};
+
+				case ChannelType.Table:
+				case ChannelType.Collection:
+					//expand into?
+					throw new NotImplementedException();
 
 				default:
 					throw new ArgumentException("Invalid rptype");
@@ -189,6 +350,9 @@ namespace EseLinq.Plans
 		{
 			internal Dictionary<string, Channel> env;
 			internal Channel[] context;
+			internal IDictionary<Type, Column.Type> type_map;
+			internal IDictionary<Column.Type, Type> coltyp_map;
+			internal Session session;
 
 			///<summary>use this constructor when about to make modifications; copies mutable members</summary>
 			internal Downstream(Downstream from)
@@ -198,6 +362,9 @@ namespace EseLinq.Plans
 					this.context = from.context.ToArray();
 				else
 					this.context = null;
+				this.type_map = from.type_map;
+				this.coltyp_map = from.coltyp_map;
+				this.session = from.session;
 			}
 
 			internal void Init()
@@ -264,6 +431,69 @@ namespace EseLinq.Plans
 				return new Upstream(new Channel(plan, query.table, query.type), plan);
 
 			return new Upstream(new Channel(plan, query.cplan, query.type), plan);
+		}
+
+		internal static Upstream TableSort(Downstream downs, Channel[] key, Channel nonkey, Plan src_plan, Type row_type)
+		{
+			//NEXT: for selections that are the same from the keys, no need to store again in body
+			var nonkey_fields_dict = nonkey.AsFieldList(downs);
+			var nonkey_fields = nonkey_fields_dict.ToArray();
+
+			//columns indexes exist in blocks in this order
+			int first_col = 0, first_nonkey_col = key.Length, seq_col = key.Length + nonkey_fields.Length;
+
+			var col_creates = new Column.CreateOptions[seq_col + 1]; //one extra for seq itself
+			var wplans = new WriterPlan[seq_col]; //don't need to write seq specifically, SortSpool handles that
+			
+			for(int i = 0; i < first_nonkey_col; i++)
+			{
+				col_creates[i] = key[i].AsCreateColumn(downs);
+				col_creates[i].TTKey = true;
+				//TODO: asc/desc
+				wplans[i] = key[i].AsWriterPlan(i);
+			}
+
+			for(int i = first_nonkey_col; i < seq_col; i++)
+			{
+				col_creates[i] = nonkey_fields[i - first_nonkey_col].Value.AsCreateColumn(downs);
+				wplans[i] = nonkey_fields[i - first_nonkey_col].Value.AsWriterPlan(i);
+			}
+
+			//add key field as ascending sequency to break unique ties (and maintain sort stability)
+			//required since keys must be unique
+			col_creates[key.Length + nonkey_fields.Length] = new Column.CreateOptions
+			{
+				TTKey = true,
+				Type = Column.Type.Long
+			};
+
+			var ctto = new Table.CreateTempOptions
+			{
+				Columns = col_creates
+			};
+
+			var spool_plan = new SortSpool(downs.session, ctto, src_plan, new CompositeWriter(wplans), key.Length + nonkey_fields.Length);
+			Channel spool_chan;
+
+			//special case for single column nonkey value
+			if(nonkey_fields_dict.ContainsKey("#SINGLETON"))
+			{
+				var single_field = nonkey_fields_dict["#SINGLETON"];
+				var sf_coltyp = single_field.coltyp == Column.Type.Nil ? downs.type_map[single_field.type] : single_field.coltyp;
+				var sf_type = single_field.type;
+				spool_chan = new Channel(spool_plan, first_nonkey_col, sf_coltyp, sf_type);
+			}
+			else
+			{
+				var fields = new Dictionary<string, Channel>();
+
+				for(int i = first_nonkey_col; i < seq_col; i++)
+					fields.Add(nonkey_fields[i - first_nonkey_col].Key, new Channel(spool_plan, i, col_creates[i].Type, nonkey_fields[i - first_nonkey_col].Value.type));
+
+				spool_chan = new Channel(spool_plan, fields, row_type);
+			}
+
+			return new Upstream(spool_chan, spool_plan);
 		}
 
 		internal static Upstream Translate(UnaryExpression exp, Downstream downs)
@@ -346,22 +576,22 @@ namespace EseLinq.Plans
 				if(as_parm != null)
 				{
 					var field = (FieldInfo)exp.Member;
-					var tplan = downs.env[as_parm.Name];
+					var chan = downs.env[as_parm.Name];
 
-					switch(tplan.chtype)
+					switch(chan.chtype)
 					{
 					case ChannelType.Table:
-						return new Upstream(new Channel(tplan.plan, field.Name, exp.Type));
+						return new Upstream(new Channel(chan.plan, field.Name, exp.Type));
 
 					case ChannelType.Calc:
-						return new Upstream(new Channel(new FieldAccess(tplan.cplan, field), exp.Type));
+						return new Upstream(new Channel(new FieldAccess(chan.cplan, field), exp.Type));
 
 					case ChannelType.Column:
 						//would need to access comma delimited names like ExpandFieldAttribute
-						return new Upstream(new Channel(tplan.plan, tplan.column.Name + "," + field.Name, exp.Type));
+						return new Upstream(new Channel(chan.plan, chan.name + "," + field.Name, exp.Type));
 
 					case ChannelType.Collection:
-						return new Upstream(tplan.fields[field.Name]);
+						return new Upstream(chan.fields[field.Name]);
 					
 					default:
 						throw IDontKnowWhatToDoWithThis(exp);
@@ -440,6 +670,14 @@ namespace EseLinq.Plans
 						var body = Translate(exp.Arguments[4], downs);
 
 						return new Upstream(body.chan, join);
+					}
+				case "OrderBy":
+					{
+						var body = Translate(exp.Arguments[0], downs);
+						downs.context = new Channel[] { body.chan };
+						var key0 = Translate(exp.Arguments[1], downs);
+
+						return TableSort(downs, new Channel[] { key0.chan }, body.chan, body.plan, null);
 					}
 						
 				default:

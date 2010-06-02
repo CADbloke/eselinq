@@ -71,18 +71,19 @@ internal:
 	!TableID()
 	{
 		if(_JetTableID)
-			switch(_Trans->_Status)
-			{
-			case Transaction::Status::Active:
-			case Transaction::Status::Zero:
-			case Transaction::Status::Committed:
-				JetCloseTable(Session->_JetSesid, _JetTableID);
-				_JetTableID = null;
-				break;
+			if(_Trans != nullptr)
+				switch(_Trans->_Status)
+				{
+				case Transaction::Status::Active:
+				case Transaction::Status::Zero:
+				case Transaction::Status::Committed:
+					JetCloseTable(Session->_JetSesid, _JetTableID);
+					_JetTableID = null;
+					break;
 
-			case Transaction::Status::Rollbacked:
-				_JetTableID = null; //it's invalid anyway
-			}
+				case Transaction::Status::Rollbacked:
+					_JetTableID = null; //it's invalid anyway
+				}
 	}
 
 	TableID ^Duplicate()

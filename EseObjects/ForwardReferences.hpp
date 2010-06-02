@@ -160,6 +160,12 @@ public interface struct IReadRecord
 	array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type);
 	array<Object ^> ^RetrieveAllValues(Column ^Col, Type ^Type, ulong SizeLimit);
 
+	generic <class T> T Retrieve(String ^Col);
+	generic <class T> T Retrieve(String ^Col, RetrieveOptions ro);
+	Object ^Retrieve(String ^Col, Type ^Type);
+	Object ^Retrieve(String ^Col, Type ^Type, RetrieveOptions ro);
+
+
 	ulong RetrieveIndexTagSequence(Column ^Col);
 	array<Field> ^RetreiveAllFields(ulong SizeLimit);
 	array<Field> ^RetreiveAllFields();
@@ -197,6 +203,7 @@ public interface struct IWriteRecord
 	property IReadRecord ^Read {IReadRecord ^get();}
 	void Set(Column ^Col, Object ^Value);
 	void Set(Column ^Col, Object ^Value, SetOptions so);
+	void Set(Column ^DestCol, Cursor ^SrcCsr, Column ^SrcCol);
 };
 
 JET_GRBIT SetOptionsFlagsToBits(IWriteRecord::SetOptions so)

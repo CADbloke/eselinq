@@ -31,7 +31,7 @@ namespace EseLinq
 		}
 	}
 
-	public class Query<T> : IQueryable<T>, IQueryable, QueryProperties
+	public class Query<T> : IQueryable<T>, IQueryable, IOrderedQueryable<T>, IOrderedQueryable, QueryProperties
 	{
 		Plan plan;
 		CalcPlan calc;

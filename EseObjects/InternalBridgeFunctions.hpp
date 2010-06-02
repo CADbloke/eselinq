@@ -290,7 +290,7 @@ Object ^from_memblock(bool &success, void *buff, ulong max, JET_COLTYP coltyp, u
 
 Object ^from_memblock(bool &success, Type ^type, void *bytes, ulong size, JET_COLTYP coltyp, ushort cp)
 {
-	if(type == Boolean::typeid)
+ 	if(type == Boolean::typeid)
 		return from_memblock<Boolean>(success, bytes, size, coltyp, cp);
 	if(type == Byte::typeid)
 		return from_memblock<Byte>(success, bytes, size, coltyp, cp);

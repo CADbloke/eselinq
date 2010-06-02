@@ -80,6 +80,7 @@
     <Compile Include="Plans\Plan.cs" />
     <Compile Include="Plans\TablePlan.cs" />
     <Compile Include="Plans\Translator.cs" />
+    <Compile Include="Plans\WriterPlan.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Provider.cs" />
     <Compile Include="Query.cs" />

@@ -61,6 +61,21 @@ public:
 		_CurrentIndex(nullptr)
 	{}
 
+	///<summary>Opens an existing table with default options.</summary>
+	Cursor(Database ^Db, Session ^Session, String ^TableName) :
+		_TableID(nullptr),
+		_CurrentIndex(nullptr)
+	{
+		marshal_context mc;
+		char const *NameChar = mc.marshal_as<char const *>(TableName);
+
+		JET_TABLEID NewTableID = null;
+
+		EseException::RaiseOnError(JetOpenTable(Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, 0, &NewTableID));
+
+		_TableID = gcnew EseObjects::TableID(NewTableID, Session->_CurrentTrans, Db);
+	}
+
 	~Cursor()
 	{
 		_TableID->~TableID();
@@ -265,6 +280,79 @@ public:
 	{
 		return Retrieve(Type, Col->_JetColID, Col->_JetColTyp, Col->_CP, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1);
 	}
+
+internal:
+	JET_COLUMNDEF LookupColumnDef(String ^Name)
+	{
+		marshal_context mc;
+		char const *NameStr = mc.marshal_as<char const *>(Name);
+		JET_COLUMNDEF jcd = {sizeof jcd};
+
+		EseException::RaiseOnError(JetGetTableColumnInfo(_TableID->Session->_JetSesid, _TableID->_JetTableID, NameStr, &jcd, sizeof jcd, JET_ColInfo));
+
+		return jcd;
+	}
+
+public:
+	///<summary>Retrieves the data from the specificd column by name at the current cursor position. Calls JetGetTableColumnInfo and JetRetrieveColumn.
+	///Less efficient than using a Column object to identify the column.
+	///Uses the specified retrieval options.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	generic <class T> virtual T Retrieve(String ^Col, IReadRecord::RetrieveOptions ro)
+	{
+		JET_GRBIT flags = RetrieveOptionsFlagsToBits(ro);
+		JET_COLUMNDEF jcd = LookupColumnDef(Col);
+
+		return safe_cast<T>(Retrieve(T::typeid, jcd.columnid, jcd.coltyp, jcd.cp, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence));
+	}
+
+	///<summary>Retrieves the data from the specificd column by name at the current cursor position. Calls JetGetTableColumnInfo and JetRetrieveColumn.
+	///Less efficient than using a Column object to identify the column.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	generic <class T> virtual T Retrieve(String ^Col)
+	{
+		JET_COLUMNDEF jcd = LookupColumnDef(Col);
+
+		return safe_cast<T>(Retrieve(T::typeid, jcd.columnid, jcd.coltyp, jcd.cp, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1));
+	}
+
+	///<summary>Retrieves the data from the specificd column by name at the current cursor position. Calls JetGetTableColumnInfo and JetRetrieveColumn.
+	///Less efficient than using a Column object to identify the column.
+	///Uses the specified retrieval options.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	virtual Object ^Retrieve(String ^Col, Type ^Type, IReadRecord::RetrieveOptions ro)
+	{
+		JET_GRBIT flags = RetrieveOptionsFlagsToBits(ro);
+		JET_COLUMNDEF jcd = LookupColumnDef(Col);
+
+		return Retrieve(Type, jcd.columnid, jcd.coltyp, jcd.cp, flags, ro.SizeHint, ro.SizeLimit, ro.RetrieveOffsetLV, ro.RetrieveTagSequence);
+	}
+
+	///<summary>Retrieves the data from the specificd column by name at the current cursor position. Calls JetGetTableColumnInfo and JetRetrieveColumn.
+	///Less efficient than using a Column object to identify the column.
+	///The type parameter determines the type of the return value. Type must be supported by current Bridge. Use Object to retrieve the default type based on the column type.
+	///</summary>
+	virtual Object ^Retrieve(String ^Col, Type ^Type)
+	{
+		JET_COLUMNDEF jcd = LookupColumnDef(Col);	
+
+		return Retrieve(Type, jcd.columnid, jcd.coltyp, jcd.cp, 0, ESEOBJECTS_MAX_ALLOCA, 0, 0, 1);
+	}
+
+	///<summary>Retrieves a value by Column with Retrieve&lt;Object ^&gt;(Col)</summary>
+    property Object ^default[Column ^]
+    {
+        Object ^get(Column ^Col) { return Retrieve<Object ^>(Col); }
+    }
+
+	///<summary>Retrieves a value by name with Retrieve&lt;Object ^&gt;(Col)</summary>
+    property Object ^default[String ^]
+    {
+        Object ^get(String ^Col) { return Retrieve<Object ^>(Col); }
+    }
 
 	///<summary>
 	///Retrieves the sequence number of a multi-valued tagged column from an index. This is an expensive operation.
@@ -679,6 +767,28 @@ public:
 			Set(Col->_JetColID, Col->_JetColTyp, Col->_CP, Value, so);
 		}
 
+		///<summary>Modifies the value of a particular column.</summary>
+		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
+		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy specified as a retrieve option.
+		///</remarks>
+		virtual void Set(String ^Col, Object ^Value)
+		{
+			JET_COLUMNDEF jcd = _Cursor->LookupColumnDef(Col);
+
+			Set(jcd.columnid, jcd.coltyp, jcd.cp, Value);
+		}
+
+		///<summary>Modifies the value of a particular column.</summary>
+		///<remarks>Updates do not actually affect the database unless the update is completed. See Complete.
+		///<pr/>Retrieval functions will return the original value before the update (prior to calling Complete which saves the changes) unless RetrieveCopy specified as a retrieve option.
+		///</remarks>
+		virtual void Set(String ^Col, Object ^Value, IWriteRecord::SetOptions so)
+		{
+			JET_COLUMNDEF jcd = _Cursor->LookupColumnDef(Col);
+
+			Set(jcd.columnid, jcd.coltyp, jcd.cp, Value, so);
+		}
+
 		//NEXT: JetSetColumns to set multiple columns?
 
 		///<summary>Copies a value from another cursor without bridging the data. Calls JetRetreiveColumn and JetSetColumn.</summary>
@@ -724,7 +834,7 @@ public:
 				break;
 			}
 
-			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, DestCol->_JetColID, buff, buffsz, buffsz == 0 ? JET_bitSetZeroLength : 0, null));
+			EseException::RaiseOnError(JetSetColumn(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, DestCol->_JetColID, buff, req_buffsz, req_buffsz == 0 ? JET_bitSetZeroLength : 0, null));
 		}
 
 		///<summary>Provides access to read the record being updated.</summary>
@@ -743,6 +853,32 @@ public:
 		generic <class T> T Retrieve(Column ^Col)
 		{
 			return _Cursor->Retrieve<T>(Col);
+		}
+
+		///<summary>Shortcut to read fields from the current record.</summary>
+		generic <class T> T Retrieve(String ^Col, IReadRecord::RetrieveOptions ro)
+		{
+			return _Cursor->Retrieve<T>(Col, ro);
+		}
+
+		///<summary>Shortcut to read fields from the current record.</summary>
+		generic <class T> T Retrieve(String ^Col)
+		{
+			return _Cursor->Retrieve<T>(Col);
+		}
+		
+		///<summary>Retrieves a value by Column with Retrieve&lt;Object ^&gt;(Col)</summary>
+		property Object ^default[Column ^]
+		{
+			Object ^get(Column ^Col) { return _Cursor->Retrieve<Object ^>(Col); }
+			void set(Column ^Col, Object ^Value) { Set(Col, Value); }
+		}
+
+		///<summary>Retrieves a value by name with Retrieve&lt;Object ^&gt;(Col)</summary>
+		property Object ^default[String ^]
+		{
+			Object ^get(String ^Col) { return _Cursor->Retrieve<Object ^>(Col); }
+			void set(String ^Col, Object ^Value) { Set(Col, Value); }
 		}
 
 		///<summary>Record size measurements of current record being updated or inserted.</summary>
@@ -1072,7 +1208,7 @@ public:
 	{
 		bool has_currency, not_equal;
 		k1->SeekTo(has_currency, not_equal, this);
-		has_currency = k2->LimitTo(this, true) && has_currency;
+		k2->LimitTo(this, true);
 		return has_currency;
 	}
 
@@ -1082,12 +1218,12 @@ public:
 	{
 		bool has_currency, not_equal;
 		k1->SeekTo(has_currency, not_equal, this);
-		has_currency = k2->LimitTo(this, false) && has_currency;
+		k2->LimitTo(this, false);
 		return has_currency;
 	}
 
 	///<summary>Positions the cursor to k1 and sets a upper limit to stop at k2, so that by scrolling forward the values within the range will be read.
-	///<pr/>Both keys will ahve wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>Both keys will have wildcards and relations appended that make the range as inclusive as possible.
 	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
 	///</summary>
 	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
@@ -1099,13 +1235,13 @@ public:
 		Seek(JET_bitSeekGE, has_currency, not_equal);
 		
 		LoadKey(k2, JET_bitFullColumnEndLimit);
-		has_currency = SetIxRange(JET_bitRangeUpperLimit) && has_currency;
+		SetIxRange(JET_bitRangeUpperLimit | JET_bitRangeInclusive);
 		
 		return has_currency;
 	}
 
 	///<summary>Positions the cursor to k1 and sets a lower limit to stop at k2, so that by scrolling backward the values within the range will be read.
-	///<pr/>Both keys will ahve wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>Both keys will have wildcards and relations appended that make the range as inclusive as possible.
 	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
 	///</summary>
 	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
@@ -1117,7 +1253,7 @@ public:
 		Seek(JET_bitSeekLE, has_currency, not_equal);
 		
 		LoadKey(k2, JET_bitFullColumnStartLimit);
-		has_currency = SetIxRange(0) && has_currency;
+		SetIxRange(JET_bitRangeInclusive);
 		
 		return has_currency;
 	}
@@ -1218,7 +1354,7 @@ public:
 	///</remarks>
 	void SetIndexMoveFirst(Index ^newIndex)
 	{
-		if(newIndex->_JetIndexID == _CurrentIndex->_JetIndexID) //setting to the same index won't move the cursor
+		if(_CurrentIndex != nullptr && newIndex->_JetIndexID == _CurrentIndex->_JetIndexID) //setting to the same index won't move the cursor
 		{
 			EseException::RaiseOnError(JetMove(Session->_JetSesid, TableID->_JetTableID, JET_MoveFirst, 0));
 			return;

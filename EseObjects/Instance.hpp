@@ -29,7 +29,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-DemandLoadFunction<JET_ERR (JET_API *)(JET_INSTANCE* pinstance, const char* szInstanceName, const char* szDisplayName, JET_GRBIT grbit)> JetCreateInstance2_demand(L"esent.dll", "JetCreateInstance2W");
+DemandLoadFunction<JET_ERR (JET_API *)(JET_INSTANCE* pinstance, const char* szInstanceName, const char* szDisplayName, JET_GRBIT grbit)> JetCreateInstance2_demand(L"esent.dll", "JetCreateInstance2");
 DemandLoadFunction<JET_ERR (JET_API *)(JET_INSTANCE* pinstance, JET_GRBIT grbit)> JetInit2_demand(L"esent.dll", "JetInit2");
 
 public ref class Instance
@@ -822,8 +822,8 @@ public:
 	///<summary>Relative or absolute path to log file directory. Path must end in backslash.</summary>
 	property String ^LogFilePath
 	{
-		String ^get() {return GetStringSysParm(JET_paramTempPath);}
-		void set(String ^NewVal) {SetStringSysParm(JET_paramTempPath, NewVal);}
+		String ^get() {return GetStringSysParm(JET_paramLogFilePath);}
+		void set(String ^NewVal) {SetStringSysParm(JET_paramLogFilePath, NewVal);}
 	}
 
 	///<summary>Fixed size of transaction log files in 1024 byte units.</summary>

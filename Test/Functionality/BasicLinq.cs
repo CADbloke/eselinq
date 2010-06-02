@@ -31,7 +31,7 @@ namespace Test.Functionality
 					{
 						new Column.CreateOptions("a", Column.Type.Long),
 						new Column.CreateOptions("b", Column.Type.SingleFloat),
-						new Column.CreateOptions("c", Column.Type.Text, Column.CodePage.English) 
+						new Column.CreateOptions("c", Column.Type.LongText, Column.CodePage.English) 
 					},
 					Indexes = new Index.CreateOptions[]
 					{
@@ -113,22 +113,37 @@ namespace Test.Functionality
 				//foreach(var x in q6)
 				//    Console.WriteLine("{0} {1}",  x.a, x.b);
 
-				var q7 = (from abc in src
-						  join abc2 in src on abc.a equals abc2.a
-						  select new
-						  {
-							  abc.a,
-							  abc.b,
-							  abc.c,
-							  a2 = abc2.a,
-							  b2 = abc2.b,
-							  c2 = abc2.c
-						  });
+				//var q7 = (from abc in src
+				//          join abc2 in src on abc.a equals abc2.a
+				//          select new
+				//          {
+				//              abc.a,
+				//              abc.b,
+				//              abc.c,
+				//              a2 = abc2.a,
+				//              b2 = abc2.b,
+				//              c2 = abc2.c
+				//          });
 
-				Console.WriteLine("G");
-				foreach(var x in q7)
-					Console.WriteLine("{0} {1} {2} {3} {4} {5}", x.a, x.b, x.c, x.a2, x.b2, x.c2);
+				//Console.WriteLine("G");
+				//foreach(var x in q7)
+				//    Console.WriteLine("{0} {1} {2} {3} {4} {5}", x.a, x.b, x.c, x.a2, x.b2, x.c2);
 
+				var q8a = (from abc in src
+						  orderby abc.a
+						  select abc);
+
+				Console.WriteLine("H");
+				foreach(var x in q8a)
+					Console.WriteLine(x.a);
+
+				//var q8b = (from abc in src
+				//          orderby abc.a, abc.b
+				//          select abc);
+
+				//Console.WriteLine("H");
+				//foreach(var x in q8b)
+				//    Console.WriteLine("{0} {1} {2}", x.a, x.b, x.c);
 			}
 		}
 	}

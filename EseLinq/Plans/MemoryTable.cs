@@ -115,6 +115,14 @@ namespace EseLinq.Plans
 				}
 			}
 
+			public IList<Column> columns
+			{
+				get
+				{
+					return null;
+				}
+			}
+
 			public void Reset()
 			{
 				position = hashset.GetEnumerator();
@@ -270,12 +278,21 @@ namespace EseLinq.Plans
 			{
 				get
 				{
-					throw new NotImplementedException();
+					return null;
+				}
+			}
+
+			public IList<Column> columns
+			{
+				get
+				{
+					return null;
 				}
 			}
 
 			public void Reset()
 			{
+				outer_operator.Reset();
 				throw new NotImplementedException();
 			}
 

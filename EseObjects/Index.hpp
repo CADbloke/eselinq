@@ -139,8 +139,13 @@ internal:
 				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ushort, sizeof local_ushort, JET_IdxInfoVarSegMac));
 				indexes[i]->_VarSegMax = local_ushort;
 
-				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ushort, sizeof local_ushort, JET_IdxInfoKeyMost));
-				indexes[i]->_KeyMaxBytes = local_ushort;
+				if(GetEseVersionMajor() >= 6)
+				{
+					EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, &local_ushort, sizeof local_ushort, JET_IdxInfoKeyMost));
+					indexes[i]->_KeyMaxBytes = local_ushort;
+				}
+				else
+					indexes[i]->_KeyMaxBytes = 0;
 
 				EseException::RaiseOnError(JetGetTableIndexInfo(sesid, tableid, retrieved_index_name, indexes[i]->_JetIndexID, sizeof(JET_INDEXID), JET_IdxInfoIndexId));
 

@@ -12,41 +12,42 @@ namespace EseLinq.Plans
 {
 	internal class Retrieve : CalcPlan
 	{
-		internal readonly Plan plan;
-		internal readonly Table table;
-		internal readonly Column col;
+		internal readonly Plan src;
+		internal readonly int col_index;
 		internal readonly Type type;
 
-		internal Retrieve(Plan plan, Table table, Column col, Type type)
+		internal Retrieve(Plan src, int col_index, Type type)
 		{
-			if(plan == null || table == null || col == null || type == null)
-				throw new NullReferenceException();
-
-			this.plan = plan;
-			this.table = table;
-			this.col = col;
+			this.src = src;
+			this.col_index = col_index;
 			this.type = type;
 		}
 
 		public Calc ToCalc(OperatorMap om)
 		{
-			return new Op
-			{
-				plan = this,
-				csr = om[plan].cursor
-			};
+			Operator src_op = om.Demand(src);
+
+			return new Op(this, src_op.cursor, src_op.columns[col_index]);
 		}
 
 		internal class Op : Calc
 		{
-			internal Retrieve plan;
-			internal Cursor csr;
+			internal readonly Retrieve plan;
+			internal readonly Cursor csr;
+			internal readonly Column col;
+
+			internal Op(Retrieve plan, Cursor csr, Column col)
+			{
+				this.plan = plan;
+				this.csr = csr;
+				this.col = col;
+			}
 
 			public object value
 			{
 				get
 				{
-					return csr.Retrieve(plan.col, plan.type);
+					return csr.Retrieve(col, plan.type);
 				}
 			}
 
@@ -58,14 +59,14 @@ namespace EseLinq.Plans
 
 		public void Dispose()
 		{
-			plan.Dispose();
+			src.Dispose();
 		}
 	}
 
 	internal class FieldAccess : CalcPlan
 	{
-		CalcPlan src;
-		FieldInfo field_info;
+		internal readonly CalcPlan src;
+		internal readonly FieldInfo field_info;
 
 		internal FieldAccess(CalcPlan src, FieldInfo field_info)
 		{

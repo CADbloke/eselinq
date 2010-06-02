@@ -47,6 +47,7 @@ namespace Test.Functionality
 			n.CircularLog = true;
 			n.TempPath = "C:\\Temp\\Edb\\";
 			n.LogFilePath = "C:\\Temp\\Edb\\";
+			n.SystemPath = "C:\\Temp\\Edb\\";
 			n.InitGlobal();
 			
 			Console.WriteLine("Creating session");
@@ -62,10 +63,10 @@ namespace Test.Functionality
 
 			try
 			{
-				Console.WriteLine("Basic Linq");
-				BasicLinq.RunTests(sess, d);
+				//Console.WriteLine("Basic Linq");
+				//BasicLinq.RunTests(sess, d);
 
-				if("abc".Length == 3)
+				if("abc".Length == 4)
 				{
 					Console.WriteLine("Done!");
 					Console.ReadLine();

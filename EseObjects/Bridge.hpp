@@ -44,7 +44,7 @@ public ref struct Bridge
 
 	static void ThrowConversionError(Column::Type coltyp, System::Type ^type)
 	{
-		throw gcnew InvalidOperationException("Data type conversion not defined from" + coltyp.ToString() + " to " + type->ToString());
+		throw gcnew InvalidOperationException("Data type conversion not defined from " + coltyp.ToString() + " to " + type->ToString());
 	}
 
 	static void ThrowConversionError(System::Type ^type1, System::Type ^type2)
