@@ -165,7 +165,7 @@ namespace Test.Functionality
 					//key with null test
 					using(var tr2 = new Transaction(sess))
 					{
-						var nkt = Table.Create(sess, db, new Table.CreateOptions
+						var nkt = Table.Create(db, new Table.CreateOptions
 						{
 							Name = "nkt",
 							Columns = new Column.CreateOptions[]

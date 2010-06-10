@@ -49,6 +49,9 @@ internal:
 
 	void CheckValidity()
 	{ 
+		if(!_Trans)
+			return; //ok
+
 		switch(_Trans->_Status)
 		{
 		case Transaction::Status::Active:
@@ -71,7 +74,7 @@ internal:
 	!TableID()
 	{
 		if(_JetTableID)
-			if(_Trans != nullptr)
+			if(_Trans)
 				switch(_Trans->_Status)
 				{
 				case Transaction::Status::Active:
@@ -92,14 +95,14 @@ internal:
 
 		JET_TABLEID newtab = null;
 
-		EseException::RaiseOnError(JetDupCursor(_Trans->Session->_JetSesid, _JetTableID, &newtab, 0));
+		EseException::RaiseOnError(JetDupCursor(_Db->Session->_JetSesid, _JetTableID, &newtab, 0));
 
 		return gcnew TableID(newtab, _Trans, _Db);
 	}
 
 	property EseObjects::Session ^Session
 	{
-		EseObjects::Session ^get() {return _Trans->Session;}
+		EseObjects::Session ^get() {return _Db->Session;}
 	}
 
 	property EseObjects::Transaction ^Trans

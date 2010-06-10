@@ -224,7 +224,7 @@ internal:
 
 public:
 	///<summary>Opens an existing table with default options.</summary>
-	Table(Database ^Db, Session ^Session, String ^TableName) :
+	Table(Database ^Db, String ^TableName) :
 		_TableID(nullptr)
 	{
 		marshal_context mc;
@@ -232,13 +232,13 @@ public:
 
 		JET_TABLEID NewTableID = null;
 
-		EseException::RaiseOnError(JetOpenTable(Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, 0, &NewTableID));
+		EseException::RaiseOnError(JetOpenTable(Db->Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, 0, &NewTableID));
 
-		_TableID = gcnew EseObjects::TableID(NewTableID, Session->_CurrentTrans, Db);
+		_TableID = gcnew EseObjects::TableID(NewTableID, Db->Session->_CurrentTrans, Db);
 	}
 
 	///<summary>Opens an existing table with specified options.</summary>
-	Table(Database ^Db, Session ^Session, String ^TableName, OpenOptions ^OpenOptions) :
+	Table(Database ^Db, String ^TableName, OpenOptions ^OpenOptions) :
 		_TableID(nullptr)
 	{
 		marshal_context mc;
@@ -247,13 +247,13 @@ public:
 
 		JET_TABLEID NewTableID = null;
 
-		EseException::RaiseOnError(JetOpenTable(Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, flags, &NewTableID));
+		EseException::RaiseOnError(JetOpenTable(Db->Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, flags, &NewTableID));
 
-		_TableID = gcnew EseObjects::TableID(NewTableID, Session->_CurrentTrans, Db);
+		_TableID = gcnew EseObjects::TableID(NewTableID, Db->Session->_CurrentTrans, Db);
 	}
 
 private:
-	static Table ^InternalCreate(Session ^Session, Database ^Db, CreateOptions Parameters, [Out] array<Column ^> ^*CreatedColumns, [Out] array<Index ^> ^*CreatedIndexes)
+	static Table ^InternalCreate(Database ^Db, CreateOptions Parameters, [Out] array<Column ^> ^*CreatedColumns, [Out] array<Index ^> ^*CreatedIndexes)
 	{
 		marshal_context mc;
 		free_list fl;
@@ -344,7 +344,7 @@ private:
 		}
 
 		//NEXT: support JetCreateTableColumnIndex2. Requires callbacks
-		int Status = JetCreateTableColumnIndex(Session->_JetSesid, Db->_JetDbid, &jtc);
+		int Status = JetCreateTableColumnIndex(Db->Session->_JetSesid, Db->_JetDbid, &jtc);
 
 		if(Status < 0) //if an error
 		{
@@ -384,7 +384,7 @@ private:
 
 		//create return objects
 
-		EseObjects::TableID ^NTableID = gcnew EseObjects::TableID(jtc.tableid, Session->CurrentTransaction, Db);
+		EseObjects::TableID ^NTableID = gcnew EseObjects::TableID(jtc.tableid, Db->Session->CurrentTransaction, Db);
 
 		Table ^NTable = gcnew Table(NTableID);
 
@@ -417,7 +417,7 @@ private:
 
 			for each(Index::CreateOptions %NewIx in Parameters.Indexes)
 			{
-				(*CreatedIndexes)[i] = gcnew Index(NewIx, Session->_JetSesid, jtc.tableid);
+				(*CreatedIndexes)[i] = gcnew Index(NewIx, Db->Session->_JetSesid, jtc.tableid);
 				i++;
 			}
 		}
@@ -523,7 +523,7 @@ private:
 			}
 		}
 
-		EseObjects::TableID ^NTableID = gcnew EseObjects::TableID(jtid, Session->CurrentTransaction, EseObjects::Database::TempDatabase);
+		EseObjects::TableID ^NTableID = gcnew EseObjects::TableID(jtid, Session->CurrentTransaction, gcnew EseObjects::Database(Session));
 
 		Cursor ^NCursor = gcnew Cursor(NTableID);
 
@@ -536,12 +536,12 @@ public:
 	///</summary>
 	///<param name="CreatedColumns">Returns an array of created columns, in the same order as specified in Parameters.Columns. Does not include derived columns.</param>
 	///<param name="CreatedIndexes">Returns an array of created indexes, in the same order as specified in Parameters.Indexes.</param>
-	static Table ^Create(Session ^Session, Database ^Db, CreateOptions Parameters, [Out] array<Column ^> ^%CreatedColumns, [Out] array<Index ^> ^%CreatedIndexes)
+	static Table ^Create(Database ^Db, CreateOptions Parameters, [Out] array<Column ^> ^%CreatedColumns, [Out] array<Index ^> ^%CreatedIndexes)
 	{
 		array<Column ^> ^CreatedColArr;
 		array<Index ^> ^CreatedIxArr;
 
-		Table ^NTable = InternalCreate(Session, Db, Parameters, &CreatedColArr, &CreatedIxArr);
+		Table ^NTable = InternalCreate(Db, Parameters, &CreatedColArr, &CreatedIxArr);
 
 		CreatedColumns = CreatedColArr;
 		CreatedIndexes = CreatedIxArr;
@@ -552,9 +552,9 @@ public:
 	///<summary>
 	///Creates a new table with specified columns and indexes in the database.
 	///</summary>
-	static Table ^Create(Session ^Session, Database ^Db, CreateOptions Parameters)
+	static Table ^Create(Database ^Db, CreateOptions Parameters)
 	{
-		return InternalCreate(Session, Db, Parameters, null, null);
+		return InternalCreate(Db, Parameters, null, null);
 	}
 
 	///<summary>

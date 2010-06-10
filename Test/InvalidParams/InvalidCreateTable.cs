@@ -65,7 +65,7 @@ namespace Test
 
 				try
 				{
-					using(var tab = Table.Create(sess, db, nt)) {} //nothing to do since this should fail
+					using(var tab = Table.Create(db, nt)) {} //nothing to do since this should fail
 					tr.Commit();
 					throw new InvalidOperationException("Create table with bad column type");
 				}
@@ -83,7 +83,7 @@ namespace Test
 				
 				try
 				{
-					using(var tab = Table.Create(sess, db, nt)) {} //nothing to do since this should fail
+					using(var tab = Table.Create(db, nt)) {} //nothing to do since this should fail
 					tr.Commit();
 					throw new InvalidOperationException("Create table with bad column type");
 				}

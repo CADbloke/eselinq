@@ -47,7 +47,7 @@ namespace Test.Functionality
 				foreach(string tname in db.TableNames)
 				{
 					WriteLine("-------" + tname);
-					using(var t = new Table(db, sess, tname))
+					using(var t = new Table(db, tname))
 					{
 						var columns = t.Columns;
 						var colstrs = new String[columns.Count];

@@ -81,7 +81,7 @@ namespace Test.Functionality
 				ixco = Index.CreateOptions.NewSecondary("CustomerIx", "+Customer", false);
 				tco.Indexes.Add(ixco);
 				
-				Order = Table.Create(sess, db, tco, out newcols, out newixs);
+				Order = Table.Create(db, tco, out newcols, out newixs);
 				OrderID = newcols[0];
 				OrderOpenDate = newcols[1];
 				OrderCustomer = newcols[2];
@@ -102,7 +102,7 @@ namespace Test.Functionality
 				ixco = Index.CreateOptions.NewSecondary("Name", "+Name", true);
 				tco.Indexes.Add(ixco);
 
-				Customer = Table.Create(sess, db, tco, out newcols, out newixs);
+				Customer = Table.Create(db, tco, out newcols, out newixs);
 				CustomerID = newcols[0];
 				CustomerName = newcols[1];
 				CustomerIx = newixs[0];
@@ -129,7 +129,7 @@ namespace Test.Functionality
 				};
 				tco.Indexes.Add(ixco);
 
-				OrderLine = Table.Create(sess, db, tco, out newcols, out newixs);
+				OrderLine = Table.Create(db, tco, out newcols, out newixs);
 				OrderLineOrder = newcols[0];
 				OrderLineSeq = newcols[1];
 				OrderLineDesc = newcols[2];

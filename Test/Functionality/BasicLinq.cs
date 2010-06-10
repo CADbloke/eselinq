@@ -24,7 +24,7 @@ namespace Test.Functionality
 				Column[] col;
 				Index[] ix;
 
-				var tab = Table.Create(s, d, new Table.CreateOptions
+				var tab = Table.Create(d, new Table.CreateOptions
 				{
 					Name = "ABC",
 					Columns = new Column.CreateOptions[]

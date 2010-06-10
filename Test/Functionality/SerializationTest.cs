@@ -82,7 +82,7 @@ namespace Test.Functionality
 			{
 				Column[] cols;
 				Index[] ixs;
-				var BinSerial = Table.Create(sess, db, new Table.CreateOptions
+				var BinSerial = Table.Create(db, new Table.CreateOptions
 				{
 					Name = "BinSerial",
 					Columns = new Column.CreateOptions[]
@@ -118,7 +118,7 @@ namespace Test.Functionality
 			{
 				Column[] cols;
 				Index[] ixs;
-				var FieldSerial = Table.Create(sess, db, new Table.CreateOptions
+				var FieldSerial = Table.Create(db, new Table.CreateOptions
 				{
 					Name = "FieldSerial",
 					Columns = new Column.CreateOptions[]
@@ -183,7 +183,7 @@ namespace Test.Functionality
 				//    }
 				//}, out cols, out ixs);
 
-				var table = Table.Create(sess, db, Flat<DEF>.CreateTableOptionsForFlat(), out cols, out ixs);
+				var table = Table.Create(db, Flat<DEF>.CreateTableOptionsForFlat(), out cols, out ixs);
 
 				using(var csr = new Cursor(table))
 				{

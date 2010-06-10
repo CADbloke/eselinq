@@ -31,7 +31,9 @@
 
 DemandLoadFunction<JET_ERR (JET_API *)(JET_SESID sesid, JET_TABLEID tableid, JET_RECSIZE *precsize, JET_GRBIT const grbit)> JetGetRecordSize_demand(L"esent.dll", "JetGetRecordSize");
 
-///<summary>Represents an open cursor in the database</summary>
+///<summary>Represents an open cursor in the database.
+///The object is invalid if the associated database object's session is disposed.
+///</summary>
 public ref class Cursor sealed : IReadRecord
 {
 	TableID ^_TableID;
@@ -61,8 +63,8 @@ public:
 		_CurrentIndex(nullptr)
 	{}
 
-	///<summary>Opens an existing table with default options.</summary>
-	Cursor(Database ^Db, Session ^Session, String ^TableName) :
+	///<summary>Opens an existing table with default options. Lifetime is tied to associated database's session.</summary>
+	Cursor(Database ^Db, String ^TableName) :
 		_TableID(nullptr),
 		_CurrentIndex(nullptr)
 	{
@@ -71,9 +73,9 @@ public:
 
 		JET_TABLEID NewTableID = null;
 
-		EseException::RaiseOnError(JetOpenTable(Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, 0, &NewTableID));
+		EseException::RaiseOnError(JetOpenTable(Db->Session->_JetSesid, Db->_JetDbid, NameChar, null, 0, 0, &NewTableID));
 
-		_TableID = gcnew EseObjects::TableID(NewTableID, Session->_CurrentTrans, Db);
+		_TableID = gcnew EseObjects::TableID(NewTableID, Db->Session->_CurrentTrans, Db);
 	}
 
 	~Cursor()

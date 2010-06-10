@@ -50,17 +50,16 @@ private:
 		_Bridge(Session->_Bridge)
 	{}
 
-	Database(String ^DatabaseName) :
-		_Session(nullptr),
-		_DatabaseName(DatabaseName),
+internal:
+	//creates a temp database placeholder object
+	Database(Session ^Session) :
+		_Session(Session),
+		_DatabaseName("<temp>"),
 		_JetDbid(null),
-		_Bridge(GetDefaultBridge())
+		_Bridge(Session->_Bridge)
 	{}
 
 public:
-	///<summary>Placeholder Databse object representing the temp database.</summary>
-	static Database ^TempDatabase = gcnew Database("<Temp>");
-
 	value struct CreateOptions
 	{
 		///<summary>Base name of the database to be created. Normally ends in .edb</summary>
@@ -180,7 +179,8 @@ public:
 		if(!_JetDbid)
 			return;
 
-		JetCloseDatabase(_Session->_JetSesid, _JetDbid, 0);
+		if(_Session->_JetSesid) //only close if session is still open; otherwise ESE will crash
+			JetCloseDatabase(_Session->_JetSesid, _JetDbid, 0);
 		_JetDbid = null;
 	}
 
