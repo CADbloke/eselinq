@@ -261,6 +261,27 @@ public:
 		_BaseColumnName = marshal_as<String ^>(jcb.szBaseColumnName);
 	}
 
+	///<summary>Opens the specified column. Calls JetGetTableColumnInfo.</summary>
+	Column(Cursor ^Csr, String ^Name) :
+		_JetColID(null),
+		_ColumnName(Name)
+	{
+		marshal_context mc;
+		char const *NameStr = mc.marshal_as<char const *>(Name);
+		JET_COLUMNDEF jcd = {sizeof jcd};
+		JET_TABLEID tableid = GetCursorTableID(Csr);
+		JET_SESID sesid = GetCursorSesid(Csr);
+
+		EseException::RaiseOnError(JetGetTableColumnInfo(sesid, tableid, NameStr, &jcd, sizeof jcd, JET_ColInfo));
+
+		SetFieldsFromColumnDef(jcd);
+
+		JET_COLUMNBASE jcb(GetColBase(sesid, tableid));
+
+		_BaseTableName = marshal_as<String ^>(jcb.szBaseTableName);
+		_BaseColumnName = marshal_as<String ^>(jcb.szBaseColumnName);
+	}
+
 	///<summary>Creates a new column in the specified table. Calls JetAddColumn.</summary>
 	static Column ^Create(Table ^Table, CreateOptions Parameters)
 	{

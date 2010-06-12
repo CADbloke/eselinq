@@ -766,6 +766,13 @@ public:
 			return indexes;
 		}
 	}
+
+	///<summary>Creates a new Column object by name.</summary>
+    property Column ^default[String ^]
+    {
+        Column ^get(String ^Name) { return gcnew Column(this, Name); }
+    }
+
 };
 
 

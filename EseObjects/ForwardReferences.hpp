@@ -47,7 +47,7 @@ Bridge ^GetTableBridge(Table ^Tab);
 Table ^MakeTableFromTableID(TableID ^Tabid);
 
 JET_TABLEID GetCursorTableID(Cursor ^Csr);
-JET_SESID GetCurosrSesid(Cursor ^Csr);
+JET_SESID GetCursorSesid(Cursor ^Csr);
 Bridge ^GetCursorBridge(Cursor ^Csr);
 
 Bridge ^GetDefaultBridge();

@@ -62,7 +62,7 @@ public:
 		_BookmarkLength(0),
 		_JetBookmark(null)
 	{
-		JET_SESID sesid = GetCurosrSesid(Csr);
+		JET_SESID sesid = GetCursorSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
 
 		ulong len_req = 0;
@@ -140,7 +140,7 @@ public:
 internal:
 	virtual void SeekTo(bool %HasCurrency, bool %NotEqual, Cursor ^c) override
 	{
-		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCurosrSesid(c), GetCursorTableID(c), _JetBookmark, _BookmarkLength, NULL, 0, 0);
+		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCursorSesid(c), GetCursorTableID(c), _JetBookmark, _BookmarkLength, NULL, 0, 0);
 
 		NotEqual = false;
 		switch(status)

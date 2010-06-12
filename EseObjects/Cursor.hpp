@@ -1634,7 +1634,7 @@ public ref struct CombinedBookmarkPosition : public Seekable
 internal:
 	virtual void SeekTo(bool %HasCurrency, bool %NotEqual, Cursor ^c) override
 	{		
-		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCurosrSesid(c), GetCursorTableID(c), Secondary->_JetBookmark, Secondary->_BookmarkLength, Primary->_JetBookmark, Primary->_BookmarkLength, 0);
+		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCursorSesid(c), GetCursorTableID(c), Secondary->_JetBookmark, Secondary->_BookmarkLength, Primary->_JetBookmark, Primary->_BookmarkLength, 0);
 
 		NotEqual = false;
 		switch(status)
@@ -1656,7 +1656,7 @@ JET_TABLEID GetCursorTableID(Cursor ^Csr)
 	return Csr->TableID->_JetTableID;
 }
 
-JET_SESID GetCurosrSesid(Cursor ^Csr)
+JET_SESID GetCursorSesid(Cursor ^Csr)
 {
 	return Csr->Session->_JetSesid;
 }

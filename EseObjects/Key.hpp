@@ -120,7 +120,7 @@ public:
 		_KeyLength(0),
 		_JetKey(null)
 	{
-		JET_SESID sesid = GetCurosrSesid(Csr);
+		JET_SESID sesid = GetCursorSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
 
 		GetBytesFromTableID(sesid, tabid, 0); //0, the default grbit is retrieve key for current record
@@ -131,7 +131,7 @@ public:
 		_KeyLength(0),
 		_JetKey(null)
 	{
-		JET_SESID sesid = GetCurosrSesid(Csr);
+		JET_SESID sesid = GetCursorSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
 		Bridge ^bridge = GetCursorBridge(Csr);
 
@@ -158,7 +158,7 @@ public:
 		_KeyLength(0),
 		_JetKey(null)
 	{
-		JET_SESID sesid = GetCurosrSesid(Csr);
+		JET_SESID sesid = GetCursorSesid(Csr);
 		JET_TABLEID tabid = GetCursorTableID(Csr);
 		Bridge ^bridge = GetCursorBridge(Csr);
 
@@ -241,7 +241,7 @@ public:
 internal:
 	virtual void SeekTo(bool %has_currency, bool %not_equal, Cursor ^c) override
 	{
-		JET_SESID sesid = GetCurosrSesid(c);
+		JET_SESID sesid = GetCursorSesid(c);
 		JET_TABLEID tabid = GetCursorTableID(c);
 
 		EseException::RaiseOnError(JetMakeKey(sesid, tabid, _JetKey, _KeyLength, JET_bitNormalizedKey));
