@@ -772,7 +772,6 @@ public:
     {
         Column ^get(String ^Name) { return gcnew Column(this, Name); }
     }
-
 };
 
 

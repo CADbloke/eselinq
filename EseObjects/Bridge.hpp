@@ -116,45 +116,38 @@ public ref struct Bridge
 		}
 	}
 
-	///<summary>Retrieves the bytes representing an object.</summary>
-	///<remarks>Note that certain column types have a preset size and it is an error to return a different size in those cases.
+	///<summary>Retrieves the bytes representing an object to be stored in ESE.</summary>
+	///<remarks>Certain column types have a preset size and it is an error to return a different size in those cases.
 	///<pr/>This is the first object->value conversion method attempted.
-	///<pr/>Set isnull to True to use a null value in the database. This overrides returning null to use the GetValueSize path.
 	///<pr/>Return null to use the ObjectValueSize unmanaged conversion (or the built in conversions, which will occur after that).
 	///<pr/>The default implementation always returns null.
 	///</remarks>
+	///<param name="coltyp">ESE column type of the destination column.</param>
+	///<param name="cp">Code page, needed for text types. Will be 1252 for ASCII or 1200 for Unicode for a text column type.</param>
+	///<param name="isnull">Set isnull to True to use a null value in the database. The return value will be ignored in this case.</param>
 	virtual array<byte> ^ValueBytesFromObject(Object ^o, bool %isnull, Column::Type coltyp, ushort cp)
 	{
 		return nullptr;
 	}
 
-	///<summary>Retrieves the size in bytes needed to store the specified object. The specified amount of memory will be allocated for ValueObjectToBytes.</summary>
-	///<remarks>Note that certain column types have a preset size and it is an error to return a different size in those cases.
-	///<pr/>This method is not used to size builtin conversions; these must use a different method.
-	///<pr/>This method must be implemented to convert values from objects.
-	///<pr/>Set isnull to True if the database value should be set as null (isnull defaults to False).
-	///<pr/>If 0 is returned, ValueBytesFromObject will not be called.
-	///<pr/>Return 0 with isnull = false to set an empty value in the database.
-	///<pr/>Return 0 with isnull = true to set a null value in the database.
-	///<pr/>Return UInt32.MaxValue to attempt a built in conversion. The default implementation always returns UInt32.MaxValue.
+	///<summary>See ValueBytesFromObject's allocator parameter.</summary>
+	delegate IntPtr Allocator(ulong size);
+
+	///<summary>Retrieves the bytes representing an object to be stored in ESE.</summary>
+	///<param name="allocator">Allocates a block of unmanaged memory for use as a return value. Allocator can be called multiple times. The memory is allocated in the C++ heap and EseObjects will automatically take ownership of any allocations when this function returns.</param>
+	///<param name="size">Size in bytes of the data area returned. This value must be set unless isnull was set to true or returning IntPtr.Zero or storing a zero-length value.</param>
+	///<param name="coltyp">ESE column type of the destination column.</param>
+	///<param name="cp">Code page, needed for text types. Will be 1252 for ASCII or 1200 for Unicode for a text column type.</param>
+	///<param name="isnull">Set isnull to True to use a null value in the database. The return value will be ignored in this case.</param>
+	///<returns>A pointer to a pinned block of memory that will be availaible until the original operation completes or allocated from Allocator representing the bytes to store in ESE.</returns>
+	///<remarks>Certain column types have a preset size and it is an error to return a different size in those cases.
+	///<pr/>This function is only called if the byte array version returns null.
+	///<pr/>Return IntPtr.Zero to attempt a built in conversion. The default implementation always returns IntPtr.Zero.
+	///<pr/>If data is allocated by some other means, it must be pinned and availaible at least until the requesting set operation completes.
 	///</remarks>
-	virtual ulong ObjectValueSize(Object ^o, bool %isnull, Column::Type coltyp, ushort cp)
+	virtual IntPtr ValueBytesFromObject(Object ^o, bool %isnull, Column::Type coltyp, ushort cp, Allocator ^allocator, ulong %size)
 	{
-		return UInt32::MaxValue;
-	}
-
-	///<summary>Sets bytes to the bytes representing the specified object. Size allocated according to ObjectValueSize.</summary>
-	///<remarks>Default implementation raises an error.</remarks>
-	virtual void ValueBytesFromObject(Object ^o, IntPtr bytes, ulong size, Column::Type coltyp, ushort cp)
-	{
-		ThrowConversionError(o->GetType(), coltyp);
-	}
-
-	///<summary>Sets bytes to the bytes representing the specified object. Size allocated according to ObjectValueSize.</summary>
-	///<remarks>Default implementation calls the IntPtr version of this method.</remarks>
-	virtual void ValueBytesFromObject(Object ^o, void *bytes, ulong size, Column::Type coltyp, ushort cp)
-	{
-		ValueBytesFromObject(o, IntPtr(bytes), size, coltyp, cp);
+		return IntPtr::Zero;
 	}
 
 	///<summary>Creates a single object T from an array of multiple values. Each value is retreived using ValueBytesToObject.</summary>
@@ -206,6 +199,21 @@ Bridge ^GetDefaultBridge()
 	return gcnew Bridge();
 }
 
+ref class FreeListAllocatorObj
+{
+	free_list *fl;
+
+internal:
+	FreeListAllocatorObj(free_list *fl) :
+		fl(fl)
+	{}
+
+	IntPtr Allocate(ulong size)
+	{
+		return IntPtr(fl->alloc_array_zero<uchar>(size));
+	}
+};
+
 void to_memblock_bridge(Bridge ^b, Object ^o, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
 {
 	Column::Type Coltyp = safe_cast<Column::Type>(coltyp);
@@ -224,34 +232,33 @@ void to_memblock_bridge(Bridge ^b, Object ^o, void *&buff, ulong &max, bool &emp
 	}
 
 	//try user conversion for type
-	ulong user_size = b->ObjectValueSize(o, user_null, Coltyp, cp);
-
-	if(user_null)
-		goto exit_return_null;
-
-	switch(user_size)
 	{
-	case 0:
-		empty = true;
-		buff = null;
-		max = 0;
-		return;
+		ulong size = 0;
+		FreeListAllocatorObj ^flao = gcnew FreeListAllocatorObj(&fl);
+		Bridge::Allocator ^allocator = gcnew Bridge::Allocator(flao, &FreeListAllocatorObj::Allocate);
 
-	case UInt32::MaxValue:
-		break; //continue to builtin conversion
+		buff = b->ValueBytesFromObject(o, user_null, Coltyp, cp, allocator, size).ToPointer();
+		max = size;
 
-	default:
-		//use user conversion for this type
-		buff = fl.alloc_array_zero<uchar>(user_size);
-		max = user_size;
-		b->ValueBytesFromObject(o, buff, max, Coltyp, cp);
-		return;
+		if(user_null)
+			goto exit_return_null;
+
+		if(size == 0 && buff)
+		{
+			empty = true;
+			buff = null;
+			max = 0;
+			return;
+		}
+
+		if(buff) //user conversion performed
+			return;
 	}
 
+	//use built in conversion
 	if(o == nullptr)
 		goto exit_return_null;
 
-	//use built in conversion
 	if(!to_memblock(o, buff, max, empty, coltyp, cp, mc, fl))
 		Bridge::ThrowConversionError(Coltyp, o->GetType());
 
