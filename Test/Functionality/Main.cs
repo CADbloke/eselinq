@@ -63,10 +63,10 @@ namespace Test.Functionality
 
 			try
 			{
-				//Console.WriteLine("Basic Linq");
-				//BasicLinq.RunTests(sess, d);
+				Console.WriteLine("Basic Linq");
+				BasicLinq.RunTests(sess, d);
 
-				if("abc".Length == 4)
+				if("abc".Length == 3)
 				{
 					Console.WriteLine("Done!");
 					Console.ReadLine();

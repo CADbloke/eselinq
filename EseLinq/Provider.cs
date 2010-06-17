@@ -10,16 +10,17 @@ namespace EseLinq
 {
 	public class Provider : IQueryProvider
 	{
-		public readonly Database db;
+		readonly Session sess;
 
-		public Provider(Database db)
+		public Provider(Session sess)
 		{
-			this.db = db;
+			this.sess = sess;
 		}
 
 		public IQueryable<T> CreateQuery<T>(Expression exp)
 		{
-
+			var args = new ParameterExpression[0];
+			return Expression.Lambda<Func<IQueryable<T>>>(exp, args).Compile()();
 		}
 
 		public IQueryable CreateQuery(Expression exp)
@@ -37,14 +38,26 @@ namespace EseLinq
 			}
 		}
 
-		public TResult Execute<TResult>(Expression expression)
+		public T Execute<T>(Expression exp)
 		{
-			throw new NotImplementedException();
+			var args = new ParameterExpression[0];
+			var lambda = Expression.Lambda<Func<T>>(exp, args);
+			return lambda.Compile().Invoke();
 		}
 
-		public object Execute(Expression expression)
+		public object Execute(Expression exp)
 		{
-			throw new NotImplementedException();
+			try
+			{
+				return (IQueryable)typeof(Provider)
+					.GetMethod("Execute")
+					.MakeGenericMethod(exp.Type)
+					.Invoke(this, new Object[] { exp });
+			}
+			catch(System.Reflection.TargetInvocationException tie)
+			{
+				throw tie.InnerException;
+			}
 		}
 	}
 }

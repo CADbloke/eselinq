@@ -6,6 +6,8 @@ using System.Text;
 using EseObjects;
 using EseLinq;
 
+using System.Linq.Expressions;
+
 namespace Test.Functionality
 {
 	public struct ABC2
@@ -63,79 +65,81 @@ namespace Test.Functionality
 					u.Complete();
 				}
 
-				Provider pro = new Provider(d);
-				Query<ABC2> src = new Query<ABC2>(pro, tab);
+				Provider pro = new Provider(s);
+				//Query<ABC2> src = new Query<ABC2>(pro, tab);
+				//var src = tab.AsEnumerable<ABC2>().AsQueryable();
+				var src = tab.AsQueryable<ABC2>(pro);
 
-				//IEnumerable<ABC2> q1 = src.Where(abc => abc.a == 3);
+				IEnumerable<ABC2> q1 = src.Where(abc => abc.a == 3);
 
-				//Console.WriteLine("A: 3");
-				//foreach(ABC2 abc in q1)
-				//    Console.WriteLine(abc.a);
+				Console.WriteLine("A: 3");
+				foreach(ABC2 abc in q1)
+					Console.WriteLine(abc.a);
 
-				//var q2 = src.Where<ABC2>(abc => abc.a == 3).Select<ABC2, int>(abc => abc.a);
+				var q2 = src.Where<ABC2>(abc => abc.a == 3).Select<ABC2, int>(abc => abc.a);
 
-				//Console.WriteLine("B: 3");
-				//foreach(int x in q2)
-				//    Console.WriteLine(x);
+				Console.WriteLine("B: 3");
+				foreach(int x in q2)
+					Console.WriteLine(x);
 
-				//var q3 = from abc in src
-				//         where abc.a == 3
-				//         select abc.b;
+				var q3 = from abc in src
+						 where abc.a == 3
+						 select abc.b;
 
-				//Console.WriteLine("C 5.55");
-				//foreach(var x in q3)
-				//    Console.WriteLine(x);
+				Console.WriteLine("C 5.55");
+				foreach(var x in q3)
+					Console.WriteLine(x);
 
-				//var q4 = (from abc in src
-				//          where abc.c == "foo"
-				//          select abc.b).Distinct<float>();
+				var q4 = (from abc in src
+						  where abc.c == "foo"
+						  select abc.b).Distinct<float>();
 
-				//Console.WriteLine("D 5.55");
-				//foreach(var x in q4)
-				//    Console.WriteLine(x);
+				Console.WriteLine("D 5.55");
+				foreach(var x in q4)
+					Console.WriteLine(x);
 
 
-				//var q5 = from n in src
-				//                from m in src
-				//                select n.a + m.a;
-				//Console.WriteLine("E");
-				//foreach(var x in q5)
-				//    Console.WriteLine(x);
+				var q5 = from n in src
+						 from m in src
+						 select n.a + m.a;
+				Console.WriteLine("E");
+				foreach(var x in q5)
+					Console.WriteLine(x);
 
-				//var q6 = from abc in src
-				//         select new
-				//         {
-				//             abc.a,
-				//             abc.b
-				//         };
+				var q6 = from abc in src
+						 select new
+						 {
+							 abc.a,
+							 abc.b
+						 };
 
-				//Console.WriteLine("F");
-				//foreach(var x in q6)
-				//    Console.WriteLine("{0} {1}",  x.a, x.b);
+				Console.WriteLine("F");
+				foreach(var x in q6)
+					Console.WriteLine("{0} {1}", x.a, x.b);
 
-				//var q7 = (from abc in src
-				//          join abc2 in src on abc.a equals abc2.a
-				//          select new
-				//          {
-				//              abc.a,
-				//              abc.b,
-				//              abc.c,
-				//              a2 = abc2.a,
-				//              b2 = abc2.b,
-				//              c2 = abc2.c
-				//          });
+				var q7 = (from abc in src
+						  join abc2 in src on abc.a equals abc2.a
+						  select new
+						  {
+							  abc.a,
+							  abc.b,
+							  abc.c,
+							  a2 = abc2.a,
+							  b2 = abc2.b,
+							  c2 = abc2.c
+						  });
 
 				//Console.WriteLine("G");
 				//foreach(var x in q7)
 				//    Console.WriteLine("{0} {1} {2} {3} {4} {5}", x.a, x.b, x.c, x.a2, x.b2, x.c2);
 
-				var q8a = (from abc in src
-						  orderby abc.a
-						  select abc);
+				//var q8a = (from abc in src.AsQueryable()
+				//          orderby abc.a
+				//          select abc);
 
-				Console.WriteLine("H");
-				foreach(var x in q8a)
-					Console.WriteLine(x.a);
+				//Console.WriteLine("H");
+				//foreach(var x in q8a)
+				//    Console.WriteLine(x.a);
 
 				//var q8b = (from abc in src
 				//          orderby abc.a, abc.b

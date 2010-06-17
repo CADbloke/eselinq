@@ -5,44 +5,66 @@ using System.Linq;
 using System.Linq.Expressions;
 
 using EseObjects;
+using EseLinq.Storage;
 
 namespace EseLinq
 {
-	public class Query<T> : IQueryable<T>, IQueryable, IOrderedQueryable<T>, IOrderedQueryable, QueryProperties
+	public class Query<T> : IQueryable<T>, IQueryable //, IOrderedQueryable<T>, IOrderedQueryable
 	{
-		Plan plan;
-		CalcPlan calc;
-		Expression exp;
-		Provider provider;
-		Table table;
+		readonly Expression exp;
+		readonly Provider provider;
+		readonly Expression<Func<IQueryable<T>>> exec;
+		IEnumerable<T> enumerable;
 
-		internal Expression MakeInject()
+		IEnumerable<T> GetEnumerable()
 		{
-			return Expression.Call
-			(
-				typeof(Translator),
-				"InjectQueryClone",
-				new Type[]
-				{
-					typeof(T)
-				},
-				new Expression[]
-				{
-					Expression.Constant(this)
-				}
-			);
+			if(enumerable == null)
+				enumerable = exec.Compile()();
+
+			return enumerable;
 		}
 
-		public Query(Provider pro, Table table)
+		public Query(Provider provider, Expression<Func<IQueryable<T>>> exp)
 		{
+			var args = new ParameterExpression[0];
+
+			this.provider = provider;
+			this.exp = Expression.Invoke(exp, args);
+			this.exec = exp;
 		}
 
-		IEnumerator<T> IEnumerable<T>.GetEnumerator()
+		public Type ElementType
 		{
+			get
+			{
+				return typeof(T);
+			}
+		}
+
+		public System.Linq.Expressions.Expression Expression
+		{
+			get
+			{
+				return exp;
+			}
+		}
+
+		public IQueryProvider Provider
+		{
+			get
+			{
+				return provider;
+			}
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()
 		{
+			return GetEnumerable().GetEnumerator();
+		}
+
+		IEnumerator<T> IEnumerable<T>.GetEnumerator()
+		{
+			return GetEnumerable().GetEnumerator();
 		}
 	}
 }
