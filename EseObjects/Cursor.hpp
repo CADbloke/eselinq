@@ -495,7 +495,7 @@ public:
 	///<summary>Builds an array containing all values in all fields in the row, including all values of mutli valued fields. Calls JetEnumerateColumns. Requires 5.1+.</summary>
 	///<param name="SizeLimit">Maximum size in bytes to return for any one value</param>
 	///<remarks>Multivalued fields are returned as arrays of values</remarks>
-	virtual array<Field> ^RetreiveAllFields(ulong SizeLimit)
+	virtual array<Field> ^RetrieveAllFields(ulong SizeLimit)
 	{
 		JET_SESID JetSesid = Session->_JetSesid;
 		JET_TABLEID JetTableID = TableID->_JetTableID;
@@ -551,9 +551,9 @@ public:
 		}
 	}
 
-	virtual array<Field> ^RetreiveAllFields()
+	virtual array<Field> ^RetrieveAllFields()
 	{
-		return RetreiveAllFields(0);
+		return RetrieveAllFields(0);
 	}
 
 	///<summary>Represents a JET_RECSIZE, reporting record size and count measurements. Requires 6.0+.</summary>
@@ -793,7 +793,7 @@ public:
 
 		//NEXT: JetSetColumns to set multiple columns?
 
-		///<summary>Copies a value from another cursor without bridging the data. Calls JetRetreiveColumn and JetSetColumn.</summary>
+		///<summary>Copies a value from another cursor without bridging the data. Calls JetRetrieveColumn and JetSetColumn.</summary>
 		virtual void Set(Column ^DestCol, Cursor ^SrcCsr, Column ^SrcCol)
 		{
 			free_list fl;
@@ -1255,6 +1255,50 @@ public:
 		Seek(JET_bitSeekLE, has_currency, not_equal);
 		
 		LoadKey(k2, JET_bitFullColumnStartLimit);
+		SetIxRange(JET_bitRangeInclusive);
+		
+		return has_currency;
+	}
+
+	///<summary>Positions the cursor to beginning of k1 and sets a upper limit to stop at the end of k1, so that by scrolling forward the values within the range will be read.
+	///<pr/>The key will have wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>The wildcard will be used in opposite directions to include the maximum number of values starting with the specified k1 as the first key field.
+	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
+	///</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool ForwardRangeInclusive(Field k1)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		bool has_currency, not_equal;
+		
+		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnStartLimit);
+		Seek(JET_bitSeekGE, has_currency, not_equal);
+		
+		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnEndLimit);
+		SetIxRange(JET_bitRangeUpperLimit | JET_bitRangeInclusive);
+		
+		return has_currency;
+	}
+
+	///<summary>Positions the cursor to beginning of k1 and sets a upper limit to stop at the end of k1, so that by scrolling backward the values within the range will be read.
+	///<pr/>The key will have wildcards and relations appended that make the range as inclusive as possible.
+	///<pr/>The wildcard will be used in opposite directions to include the maximum number of values starting with the specified k1 as the first key field.
+	///<pr/>There must be at least one key field unspecified to leave room for the wildcard.
+	///</summary>
+	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
+	bool BackwardRangeInclusive(Field k1)
+	{
+		JET_SESID sesid = Session->_JetSesid;
+		JET_TABLEID tabid = _TableID->_JetTableID;
+
+		bool has_currency, not_equal;
+
+		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnEndLimit);
+		Seek(JET_bitSeekLE, has_currency, not_equal);
+		
+		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnStartLimit);
 		SetIxRange(JET_bitRangeInclusive);
 		
 		return has_currency;

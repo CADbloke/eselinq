@@ -78,6 +78,11 @@ internal:
 		}
 	}
 
+	static void LoadSingleFieldIntoTableID(JET_SESID sesid, JET_TABLEID tabid, Bridge ^Bridge, Field field, JET_GRBIT grbit)
+	{
+		LoadFieldIntoTableID(sesid, tabid, Bridge, field.Col, field.Val, JET_bitNewKey | grbit);
+	}
+
 private:
 	Key() :
 	   _KeyLength(0),

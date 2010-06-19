@@ -63,7 +63,7 @@ namespace Test.Functionality
 
 							while(has_current)
 							{
-								var fields = c.RetreiveAllFields(0x1000);
+								var fields = c.RetrieveAllFields(0x1000);
 								var fieldstrs = new String[fields.Length];
 								for(uint i = 0; i < fields.Length; i++)
 								{

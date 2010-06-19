@@ -167,8 +167,8 @@ public interface struct IReadRecord
 
 
 	ulong RetrieveIndexTagSequence(Column ^Col);
-	array<Field> ^RetreiveAllFields(ulong SizeLimit);
-	array<Field> ^RetreiveAllFields();
+	array<Field> ^RetrieveAllFields(ulong SizeLimit);
+	array<Field> ^RetrieveAllFields();
 };
 
 ulong RetrieveOptionsFlagsToBits(IReadRecord::RetrieveOptions ro)

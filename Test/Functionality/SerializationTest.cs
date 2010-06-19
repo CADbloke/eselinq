@@ -197,7 +197,7 @@ namespace Test.Functionality
 					csr.MoveFirst();
 					d2 = srr.Read(csr);
 
-					Field[] values = csr.RetreiveAllFields();
+					Field[] values = csr.RetrieveAllFields();
 
 					if(d1.d != d2.d || d1.e != d2.e || d1.f != d2.f ||
 						d1.xyz.x != d2.xyz.x || d1.xyz.y != d2.xyz.y || d1.xyz.z != d2.xyz.z)
