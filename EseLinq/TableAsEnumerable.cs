@@ -124,8 +124,15 @@ namespace EseLinq
 			{
 				this.cursor = new Cursor(tab);
 				this.bridge = bridge;
-				cursor.MoveFirst();
-				cursor.Move(-1);
+				Reset();
+			}
+
+			T IEnumerator<T>.Current
+			{
+				get
+				{
+					return bridge.Read(cursor);
+				}
 			}
 
 			object IEnumerator.Current
@@ -147,12 +154,151 @@ namespace EseLinq
 				cursor.Move(-1);
 			}
 
+			public void Dispose()
+			{
+				cursor.Dispose();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Provides an IEnumerable instance for a table by creating a cursor for the enuerator that scans the contents of the table.
+	/// </summary>
+	/// <typeparam name="T">Type to bridge retrieved rows into.</typeparam>
+	public class KeyRangeAsEnumerable<T> : IEnumerable, IEnumerable<T>
+	{
+		readonly Table table;
+		readonly IRecordBridge<T> bridge;
+		readonly Seekable start_key;
+		readonly Limitable end_key;
+		readonly int direction;
+
+		KeyRangeAsEnumerable(Table table, Seekable start_key, Limitable end_key, int direction)
+		{
+			this.table = table;
+			this.bridge = new Flat<T>(table);
+			this.start_key = start_key;
+			this.end_key = end_key;
+			this.direction = direction;
+		}
+
+		KeyRangeAsEnumerable(Table table, Seekable start_key, Limitable end_key, int direction, IRecordBridge<T> bridge)
+		{
+			this.table = table;
+			this.bridge = bridge;
+			this.start_key = start_key;
+			this.end_key = end_key;
+			this.direction = direction;
+		}
+
+		public static KeyRangeAsEnumerable<T> NewForward(Table table, Seekable start_key, Limitable end_key)
+		{
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewForward(Table table, Seekable start_key, Limitable end_key, IRecordBridge<T> bridge)
+		{
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1, bridge);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewForward(Table table, Column col, object k1)
+		{
+			var field = new Field(col, k1);
+			var start_key = new FieldPosition(new Field[] { field }, Match.WildcardStart, SeekRel.GE);
+			var end_key = new FieldPosition(new Field[] { field }, Match.WildcardEnd, SeekRel.LE);
+			
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewForward(Table table, string col, object k1)
+		{
+			var field = new Field(new Column(table, col), k1);
+			var start_key = new FieldPosition(new Field[] { field }, Match.WildcardStart, SeekRel.GE);
+			var end_key = new FieldPosition(new Field[] { field }, Match.WildcardEnd, SeekRel.LE);
+
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1);
+		}
+
+
+		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Seekable start_key, Limitable end_key)
+		{
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Seekable start_key, Limitable end_key, IRecordBridge<T> bridge)
+		{
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1, bridge);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Column col, object k1)
+		{
+			var field = new Field(col, k1);
+			var start_key = new FieldPosition(new Field[] { field }, Match.WildcardStart, SeekRel.GE);
+			var end_key = new FieldPosition(new Field[] { field }, Match.WildcardEnd, SeekRel.LE);
+
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1);
+		}
+
+		public static KeyRangeAsEnumerable<T> NewBackward(Table table, string col, object k1)
+		{
+			var field = new Field(new Column(table, col), k1);
+			var start_key = new FieldPosition(new Field[] { field }, Match.WildcardStart, SeekRel.GE);
+			var end_key = new FieldPosition(new Field[] { field }, Match.WildcardEnd, SeekRel.LE);
+
+			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1);
+		}
+
+
+		IEnumerator<T> IEnumerable<T>.GetEnumerator()
+		{
+			return new Enumerator(table, this);
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return new Enumerator(table, this);
+		}
+
+		internal class Enumerator : IEnumerator, IEnumerator<T>, IDisposable
+		{
+			readonly Cursor cursor;
+			readonly KeyRangeAsEnumerable<T> parent;
+
+			internal Enumerator(Table tab, KeyRangeAsEnumerable<T> parent)
+			{
+				this.cursor = new Cursor(tab);
+				this.parent = parent;
+				Reset();
+			}
+
 			T IEnumerator<T>.Current
 			{
 				get
 				{
-					return bridge.Read(cursor);
+					return parent.bridge.Read(cursor);
 				}
+			}
+
+			object IEnumerator.Current
+			{
+				get
+				{
+					return parent.bridge.Read(cursor);
+				}
+			}
+
+			public bool MoveNext()
+			{
+				return cursor.Move(parent.direction);
+			}
+
+			public void Reset()
+			{
+				if(parent.direction > 0)
+					cursor.ForwardRange(parent.start_key, parent.end_key);
+				else
+					cursor.BackwardRange(parent.start_key, parent.end_key);
+				cursor.Move(-parent.direction);
 			}
 
 			public void Dispose()
