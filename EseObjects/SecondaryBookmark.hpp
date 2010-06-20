@@ -36,7 +36,7 @@
 ///<pr/>CompareTo will sort in the same order as the database index.
 ///</remarks>
 
-//better code sharing between this class and Bookmark would be nice
+//NEXT:better code sharing between this class and Bookmark would be nice
 public ref class SecondaryBookmark : public Seekable, IComparable<SecondaryBookmark ^>, IComparable
 {
 internal:

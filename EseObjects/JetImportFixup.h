@@ -29,7 +29,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-//Prior to 6.0 (Vista), all ESE functions were without charset suffix as exported in esent.dll.
+//Prior to 6.0 (Vista), all ESE functions were without charset suffix (i.e. JetFunction vs JetFunctionA/JetFunctionW) as exported in esent.dll.
 //When JET_VERSION is defined to something less than 0600, this is the way they're presented in the headers.
 //When JET_VERSION is at least 0600, *A (or *W if JET_UNICODE is defined) versions are used (similar to other Win32 functions).
 //Unfortunately, earlier verisons of esent.dll do not export *A and *W versions but have base name functions that all operate in ASCII.

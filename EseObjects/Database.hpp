@@ -136,7 +136,7 @@ private:
 
 public:
 
-	//opens an already attached database
+	///<summary>Open an already attached database.</summary>
 	Database(Session ^Session, String ^DatabaseName) :
 		_Session(Session),
 		_DatabaseName(DatabaseName),
@@ -152,7 +152,7 @@ public:
 		_JetDbid = NewJetDbid;
 	}
 
-	//opens an already attached database with options
+	///<summary>Open an already attached database wiht the specified options.</summary>
 	Database(Session ^Session, String ^DatabaseName, OpenOptions Opts) :
 		_Session(Session),
 		_DatabaseName(DatabaseName),
@@ -184,6 +184,7 @@ public:
 		_JetDbid = null;
 	}
 
+	///<summary>Attach an existing database file to this instance. ESE databases cannot be shared between instances concurrently.</summary>
 	static Database ^AttachDatabase(Session ^Session, String ^DatabaseName, AttachOptions Opts)
 	{
 		marshal_context mc;
@@ -198,6 +199,7 @@ public:
 		return gcnew Database(Session, DatabaseName, Opts2);
 	}
 
+	///<summary>Attach an existing database file to this instance. ESE databases cannot be shared between instances concurrently.</summary>
 	static Database ^AttachDatabase(Session ^Session, String ^DatabaseName)
 	{
 		AttachOptions Opts;
@@ -224,6 +226,7 @@ public:
 		EseException::RaiseOnError(JetDetachDatabase2(Session->_JetSesid, NameChar, flags));
 	}
 
+	///<summary>Creates a new database file, attaches it to the instance and opens it.</summary>
 	static Database ^Create(Session ^Session, CreateOptions CreateOptions)
 	{
 		marshal_context mc;
@@ -236,6 +239,7 @@ public:
 		return gcnew Database(Session, CreateOptions.FileName, NewJetDbid);
 	}
 
+	///<summary>Gets the session the Database object is associated with. Database objects are only valid for the session they are connected to.</summary>
 	property EseObjects::Session ^Session
 	{
 		EseObjects::Session ^get() {return _Session;}

@@ -8,6 +8,9 @@ using EseObjects;
 
 namespace EseLinq
 {
+	/// <summary>
+	/// LINQ provider for EseLinq. Translates LINQ expressions into IQueryables.
+	/// </summary>
 	public class Provider : IQueryProvider
 	{
 		readonly Session sess;

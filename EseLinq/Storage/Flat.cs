@@ -408,6 +408,9 @@ namespace EseLinq.Storage
 			}
 		}
 
+		/// <summary>
+		/// Constructs a Table.CreateOptions compatible with flat storage of the type.
+		/// </summary>
 		public static Table.CreateOptions CreateTableOptionsForFlat(IDictionary<Type, Column.Type> TypeMap)
 		{
 			Type type = typeof(T);
@@ -457,6 +460,9 @@ namespace EseLinq.Storage
 			return tco;
 		}
 
+		/// <summary>
+		/// Constructs a Table.CreateOptions compatible with flat storage of the type.
+		/// </summary>
 		public static Table.CreateOptions CreateTableOptionsForFlat()
 		{
 			return CreateTableOptionsForFlat(StandardTypeMap);

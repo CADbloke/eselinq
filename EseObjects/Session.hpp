@@ -31,7 +31,12 @@
 
 ref class Transaction;
 
-public ref class Session : ICloneable
+///<summary>A session represents a single sequence of communication with ESE. There should be one session for each logical work thread.</summary>
+///<remarks>
+///Normally, a session with a transaction open is tied to the OS thread that opened the transaction.
+///Transfer of ownership can only take place with {Set/Reset}SessionContext or by ending the transaction.
+///</remarks>
+public ref class Session
 {
 internal:
 	Instance ^_Instance;
@@ -55,6 +60,7 @@ private:
 	{}
 
 public:
+	///<summary>Creates a new session.</summary>
 	Session(Instance ^Instance) :
 		_Instance(Instance),
 		_JetSesid(BeginSession(Instance->_JetInstance)),
@@ -75,7 +81,8 @@ public:
 		_JetSesid = null;
 	}
 
-	virtual Object ^Clone()
+	///<summary>Copies certain aspects of the session into a new session. Calls JetDupSession.</summary>
+	virtual Session ^Clone()
 	{
 		JET_SESID NewJetSesid;
 
@@ -89,6 +96,7 @@ public:
 		EseObjects::Instance ^get() {return _Instance;}
 	}
 
+	///<summary>Provides the internal JET_SESID handle that represents the session to ESE.</summary>
 	property IntPtr JetSesid
 	{
 		IntPtr get()
@@ -99,6 +107,7 @@ public:
 		}
 	}
 
+	///<summary>Retrieves the current Transaction object. Only meaningful when using EseObjects.Transaction objects (as opposed to the transaction methods defined in this class).</summary>
 	property Transaction ^CurrentTransaction
 	{
 		Transaction ^get() {return _CurrentTrans;}
@@ -111,47 +120,56 @@ public:
 	};
 
 internal:
+	///<summary>Begins a transaction without using a EseObjects.Transaction object. Calls JetBeginTransaction.</summary>
 	void BeginTransaction()
 	{
 		EseException::RaiseOnError(JetBeginTransaction(_JetSesid));
 	}
 
+	///<summary>Begins a readonly transaction without using a EseObjects.Transaction. Calls JetBeginTransaction2 with JET_bitTransactionReadOnly.</summary>
 	void BeginReadonlyTransaction()
 	{
 		EseException::RaiseOnError(JetBeginTransaction2(_JetSesid, JET_bitTransactionReadOnly));
 	}
 
+	///<summary>Commits a transaction without using a EseObjects.Transaction. Calls JetCommitTransaction.</summary>
 	void CommitTransaction()
 	{
 		EseException::RaiseOnError(JetCommitTransaction(_JetSesid, 0));
 	}
 
+	///<summary>Commits a transaction with lazy flush semantics without using a EseObjects.Transaction. Calls JetCommitTransaction with JET_bitCommitLazyFlush.</summary>
 	void CommitTransactionLazyFlush()
 	{
 		EseException::RaiseOnError(JetCommitTransaction(_JetSesid, JET_bitCommitLazyFlush));
 	}
 
+	///<summary>Calls JetCommitTransaction with JET_bitWaitLastLevel0Commit</summary>
 	void CommitTransactionWaitLastLevel0Commit()
 	{
 		EseException::RaiseOnError(JetCommitTransaction(_JetSesid, JET_bitWaitLastLevel0Commit));
 	}
 
+	///<summary>Calls JetCommitTransaction with JET_bitWaitAllLevel0Commit</summary>
 	void CommitTransactionWaitAllLevel0Commit()
 	{
 		EseException::RaiseOnError(JetCommitTransaction(_JetSesid, JET_bitWaitAllLevel0Commit));
 	}
 
+	///<summary>Cancels a transaction without using a EseObjects.Transaction. Calls JetRollback.</summary>
 	void RollbackTransaction()
 	{
 		EseException::RaiseOnError(JetRollback(_JetSesid, 0));
 	}
 
+	///<summary>Cancels all current transactions without using EseObjects.Transaction objects. Calls JetRollback with JET_bitRollbackAll.</summary>
 	void RollbackAllTransactions()
 	{
 		EseException::RaiseOnError(JetRollback(_JetSesid, JET_bitRollbackAll));
 	}
 
 public:
+	///<summary>Calls JetGetVersion to retrieve the version of the database engine.</summary>
 	property ulong Version
 	{
 		ulong get()
@@ -164,11 +182,13 @@ public:
 		}
 	}
 
+	///<summary>Triggers cleanup of the version store. Calls JetIdle with JET_bitIdleCompact.</summary>
 	void CompactVersionStore()
 	{
 		EseException::RaiseOnError(JetIdle(_JetSesid, JET_bitIdleCompact));
 	}
 
+	///<summary>Indicates if the version store is at least half full. Calls JetIdle with JET_bitIdleStatus.</summary>
 	property bool IsVersionStoreHalfFull
 	{
 		bool get()

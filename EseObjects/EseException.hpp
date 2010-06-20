@@ -29,6 +29,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+///<summary>Specialized exception class for EseObjects which includes error code, symbol and description.</summary>
 public ref class EseException : System::Runtime::InteropServices::ExternalException
 {
 public:

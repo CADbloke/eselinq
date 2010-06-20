@@ -9,6 +9,10 @@ using EseLinq.Storage;
 
 namespace EseLinq
 {
+	/// <summary>
+	/// A Query represents a LINQ expression tree applied to an EseLinq data source.
+	/// </summary>
+	/// <typeparam name="T">Type of the object representing each element.</typeparam>
 	public class Query<T> : IQueryable<T>, IQueryable //, IOrderedQueryable<T>, IOrderedQueryable
 	{
 		readonly Expression exp;

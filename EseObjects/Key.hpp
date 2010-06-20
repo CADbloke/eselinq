@@ -195,6 +195,7 @@ public:
 		return Arr;
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	virtual int CompareTo(Key ^other)
 	{
 		if(other == nullptr)
@@ -208,36 +209,43 @@ public:
 			return 1;
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	virtual int CompareTo(Object ^other)
 	{
 		return CompareTo(safe_cast<Key ^>(other));
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator ==(Key %b1, Key %b2)
 	{
 		return b1._KeyLength == b2._KeyLength && memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) == 0;
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator !=(Key %b1, Key %b2)
 	{
 		return b1._KeyLength != b2._KeyLength || memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) != 0;
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator >(Key %b1, Key %b2)
 	{
 		return b1._KeyLength > b2._KeyLength || (b1._KeyLength == b2._KeyLength && memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) > 0);
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator <(Key %b1, Key %b2)
 	{
 		return b1._KeyLength < b2._KeyLength || (b1._KeyLength == b2._KeyLength && memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) < 0);
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator >=(Key %b1, Key %b2)
 	{
 		return b1._KeyLength > b2._KeyLength || (b1._KeyLength == b2._KeyLength && memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) >= 0);
 	}
 
+	///<summary>Compares one key to another. Sorts in the same order that keys sort in the source index.</summary>
 	static bool operator <=(Key %b1, Key %b2)
 	{
 		return b1._KeyLength < b2._KeyLength || (b1._KeyLength == b2._KeyLength && memcmp(b1._JetKey, b2._JetKey, b1._KeyLength) <= 0);

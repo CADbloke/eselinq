@@ -62,6 +62,7 @@ private:
 
 
 public:
+	///<summary>Create a bookmark from a previously stored byte array from ToByteArray.</summary>
 	Bookmark(array<uchar> ^Bytes) :
 		_BookmarkLength(Bytes->Length),
 		_JetBookmark(new uchar[_BookmarkLength])
@@ -70,6 +71,7 @@ public:
 			_JetBookmark[i] = Bytes[i];
 	}
 
+	///<summary>Create a bookmark from the current position of a cursor.</summary>
 	Bookmark(Cursor ^Csr) :
 		_BookmarkLength(0),
 		_JetBookmark(null)
@@ -93,6 +95,7 @@ public:
 		EseException::RaiseOnError(status);
 	}
 
+	///<summary>Get the byte representation of the bookmark for future restoration.</summary>
 	array<uchar> ^ToByteArray()
 	{
 		array<uchar> ^Arr = gcnew array<uchar>(_BookmarkLength);
@@ -103,6 +106,7 @@ public:
 		return Arr;
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	virtual int CompareTo(Bookmark ^other)
 	{
 		if(other == nullptr)
@@ -116,36 +120,43 @@ public:
 			return 1;
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	virtual int CompareTo(Object ^other)
 	{
 		return CompareTo(safe_cast<Bookmark ^>(other));
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator ==(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength == b2._BookmarkLength && memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) == 0;
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator !=(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength != b2._BookmarkLength || memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) != 0;
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator >(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength > b2._BookmarkLength || (b1._BookmarkLength == b2._BookmarkLength && memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) > 0);
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator <(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength < b2._BookmarkLength || (b1._BookmarkLength == b2._BookmarkLength && memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) < 0);
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator >=(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength > b2._BookmarkLength || (b1._BookmarkLength == b2._BookmarkLength && memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) >= 0);
 	}
 
+	///<summary>Compare one bookmark to another. Sorts in the same order as the index it came from.</summary>
 	static bool operator <=(Bookmark %b1, Bookmark %b2)
 	{
 		return b1._BookmarkLength < b2._BookmarkLength || (b1._BookmarkLength == b2._BookmarkLength && memcmp(b1._JetBookmark, b2._JetBookmark, b1._BookmarkLength) <= 0);

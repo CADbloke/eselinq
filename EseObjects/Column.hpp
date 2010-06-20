@@ -351,10 +351,13 @@ public:
 		_ColumnName = NewName;
 	}
 
+	///<summary>Internal identity of column used by ESE.</summary>
 	property ulong JetColumnID {ulong get() {return _JetColID;}}
 
+	///<summary>Name of the column at the time the Column object was created.</summary>
 	property String ^Name {String ^get() {return _ColumnName;}}
 
+	///<summary>Data type of column.</summary>
 	property Type ColumnType
 	{
 		Type get() {return safe_cast<Type>(_JetColTyp);}
@@ -381,8 +384,10 @@ public:
 	property bool Unversioned {bool get() {return _Flags & JET_bitColumnUnversioned;}}
 	property bool DeleteOnZero {bool get() {return _Flags & JET_bitColumnDeleteOnZero;}}
 
+	///<summary>For a derived table, the base table it is derived from.</summary>
 	property String ^BaseTableName {String ^get() {return _BaseTableName;}}
 
+	///<summary>For a derived table, the base column this column is derived from.</summary>
 	property String ^BaseColumnName {String ^get() {return _BaseColumnName;}}
 };
 

@@ -304,42 +304,49 @@ public:
 	//System options:
 
 	//Database options
+	///<summary>Causes Init to raise a special error if the database is from a sufficiently old release.</summary>
 	property bool CheckFormatWhenOpenFail
 	{
 		bool get() {return GetBoolSysParm(JET_paramDbExtensionSize);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramDbExtensionSize, NewVal);}
 	}
 
+	///<summary>Database page size. Only one size allowed per OS process. Defaults to 4096. Allowed values: 2048, 4086, 8192.</summary>
 	property int64 DatabasePageSize
 	{
 		int64 get() {return GetLongSysParm(JET_paramDatabasePageSize);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramDatabasePageSize, NewVal);}
 	}
 
+	///<summary>Size in database pages the database file is expanded by each time additional space is needed.</summary>
 	property int64 DbExtensionSize
 	{
 		int64 get() {return GetLongSysParm(JET_paramDatabasePageSize);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramDatabasePageSize, NewVal);}
 	}
 
+	///<summary>Checks for indexes built with an older NLS library that would be invalid with the current NLS library.</summary>
 	property bool EnableIndexChecking
 	{
 		bool get() {return GetBoolSysParm(JET_paramEnableIndexChecking);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramEnableIndexChecking, NewVal);}
 	}
 
+	///<summary>Enable cleanup of indexes created with an older NLS library.</summary>
 	property bool EnableIndexCleanup
 	{
 		bool get() {return GetBoolSysParm(JET_paramEnableIndexCleanup);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramEnableIndexCleanup, NewVal);}
 	}
 
+	///<summary>Adds a restriction such that any database can only be opened by one session at a time.</summary>
 	property bool OneDatabasePerSession
 	{
 		bool get() {return GetBoolSysParm(JET_paramOneDatabasePerSession);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramOneDatabasePerSession, NewVal);}
 	}
 
+	///<summary>Online defrag options used by Instance.EnableOnlineDefrag</summary>
 	enum struct DefragOpts
 	{
 		Disable = JET_OnlineDefragDisable,
@@ -349,18 +356,21 @@ public:
 		All = JET_OnlineDefragAll
 	};
 
+	///<summary>Controls online defragmentation.</summary>
 	property DefragOpts EnableOnlineDefrag
 	{
 		DefragOpts get() {return safe_cast<DefragOpts>(GetLongSysParm(JET_paramEnableOnlineDefrag));}
 		void set(DefragOpts NewVal) {SetLongSysParm(JET_paramEnableOnlineDefrag, safe_cast<int64>(NewVal));}
 	}
 
+	///<summary>Threshold in database pages to control free space fragmentation.</summary>
 	property int64 PageFragment
 	{
 		int64 get() {return GetLongSysParm(JET_paramPageFragment);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramPageFragment, NewVal);}
 	}
 
+	///<summary>Controls flush rate of in-place format conversion of records.</summary>
 	property int64 RecordUpgradeDirtyLevel
 	{
 		int64 get() {return GetLongSysParm(JET_paramRecordUpgradeDirtyLevel);}
@@ -368,30 +378,35 @@ public:
 	}
 
 	//backup/restore options
+	///<summary>Override database and transaction log directory during recovery.</summary>
 	property String ^AlternateDatabaseRecoveryPath
 	{
 		String ^get() {return GetStringSysParm(JET_paramAlternateDatabaseRecoveryPath);}
 		void set(String ^NewVal) {SetStringSysParm(JET_paramAlternateDatabaseRecoveryPath, NewVal);}
 	}
 
+	///<summary>Enables silent cleanup of transaction log file size changes during recovery.</summary>
 	property bool CleanupMismatchedLogFiles
 	{
 		bool get() {return GetBoolSysParm(JET_paramCleanupMismatchedLogFiles);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramCleanupMismatchedLogFiles, NewVal);}
 	}
 
+	///<summary>Enables slient cleanup of extraneous log files during recovery.</summary>
 	property bool DeleteOutOfRangeLogs
 	{
 		bool get() {return GetBoolSysParm(JET_paramDeleteOutOfRangeLogs);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramDeleteOutOfRangeLogs, NewVal);}
 	}
 
+	///<summary>Controls the amount of time between JetOSSnapshotFreeze and JetOSSnapshotThaw before a timeout occurs.</summary>
 	property int64 OSSnapshotTimeout
 	{
 		int64 get() {return GetLongSysParm(JET_paramOSSnapshotTimeout);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramOSSnapshotTimeout, NewVal);}
 	}
 
+	///<summary>Zeros data in deleted pages during stream backup.</summary>
 	property bool ZeroDatabaseDuringBackup
 	{
 		bool get() {return GetBoolSysParm(JET_paramZeroDatabaseDuringBackup);}
@@ -399,78 +414,91 @@ public:
 	}
 
 	//database cache options
+	///<summary>Size of extra buffers used for scatter/gather IO emulation. Obsolete in 5.1+.</summary>
 	property int64 BatchIOBufferMax
 	{
 		int64 get() {return GetLongSysParm(JET_paramBatchIOBufferMax);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramBatchIOBufferMax, NewVal);}
 	}
 
+	///<summary>Manual control over database cache size in DB pages. Must be within range CacheSizeMin and CacheSizeMax.</summary>
 	property int64 CacheSize
 	{
 		int64 get() {return GetLongSysParm(JET_paramCacheSize);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramCacheSize, NewVal);}
 	}
 
+	///<summary>Minimum size of cache in DB pages.</summary>
 	property int64 CacheSizeMin
 	{
 		int64 get() {return GetLongSysParm(JET_paramCacheSizeMin);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramCacheSizeMin, NewVal);}
 	}
 
+	///<summary>Maximum size of cache in DB pages.</summary>
 	property int64 CacheSizeMax
 	{
 		int64 get() {return GetLongSysParm(JET_paramCacheSizeMax);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramCacheSizeMax, NewVal);}
 	}
 
+	///<summary>Controls how aggressively page flushing occurs.</summary>
 	property int64 CheckpointDepthMax
 	{
 		int64 get() {return GetLongSysParm(JET_paramCheckpointDepthMax);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramCheckpointDepthMax, NewVal);}
 	}
 
+	///<summary>Maximum concurrent IO operations for the purpose of flushing data to the database file.</summary>
 	property int64 CheckpointIOMax
 	{
 		int64 get() {return GetLongSysParm(JET_paramCheckpointIOMax);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramCheckpointIOMax, NewVal);}
 	}
 
+	///<summary>File data is read through the OS file cache instead of copying the data into private memory. Used to reduce memory usage.</summary>
 	property bool EnableViewCache
 	{
 		bool get() {return GetBoolSysParm(JET_paramEnableViewCache);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramEnableViewCache, NewVal);}
 	}
 
+	///<summary>This parameter sets the time interval in microseconds over which two database page accesses are considered to be correlated.</summary>
 	property int64 LRUKCorrInterval
 	{
 		int64 get() {return GetLongSysParm(JET_paramLRUKCorrInterval);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramLRUKCorrInterval, NewVal);}
 	}
 
+	///<summary>This parameter sets the maximum number of non cached database pages for which database page access times will be retained.</summary>
 	property int64 LRUKHistoryMax
 	{
 		int64 get() {return GetLongSysParm(JET_paramLRUKHistoryMax);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramLRUKHistoryMax, NewVal);}
 	}
 
+	///<summary>This parameter configures the number of database page accesses that are considered for determining the usefulness of the page.</summary>
 	property int64 LRUKPolicy
 	{
 		int64 get() {return GetLongSysParm(JET_paramLRUKPolicy);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramLRUKPolicy, NewVal);}
 	}
 
+	///<summary>This parameter indicates the period of time in seconds after which a page in the database page cache is considered to have lost a page access for the purpose of considering the usefulness of the page.</summary>
 	property int64 LRUKTimeout
 	{
 		int64 get() {return GetLongSysParm(JET_paramLRUKTimeout);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramLRUKTimeout, NewVal);}
 	}
 
+	///<summary>This parameter controls when the database page cache begins evicting pages from the cache to make room for pages that are not cached.</summary>
 	property int64 StartFlushThreshold
 	{
 		int64 get() {return GetLongSysParm(JET_paramStartFlushThreshold);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramStartFlushThreshold, NewVal);}
 	}
 
+	///<summary>This parameter controls when the database page cache ends evicting pages from the cache to make room for pages that are not cached.</summary>
 	property int64 StopFlushThreshold
 	{
 		int64 get() {return GetLongSysParm(JET_paramStopFlushThreshold);}
@@ -478,6 +506,7 @@ public:
 	}
 
 	//error handling option
+	///<summary>This parameter controls what happens when an exception is thrown by the database engine or code that is called by the database engine.This parameter controls what happens when an exception is thrown by the database engine or code that is called by the database engine.</summary>
 	property int64 ExceptionAction
 	{
 		int64 get() {return GetLongSysParm(JET_paramExceptionAction);}
@@ -485,30 +514,35 @@ public:
 	}
 
 	//event log options
+	///<summary>This parameter controls the size (in bytes) of an eventlog message cache that will hold eventlog messages emitted by the database engine while the eventlog service is stopped.</summary>
 	property bool EventLogCache
 	{
 		bool get() {return GetBoolSysParm(JET_paramEventLogCache);}
 		void set(bool NewVal) {SetBoolSysParm(JET_paramEventLogCache, NewVal);}
 	}
 
+	///<summary>This parameter configures the detail level of eventlog messages that are emitted to the eventlog by the database engine.</summary>
 	property int64 EventLoggingLevel
 	{
 		int64 get() {return GetLongSysParm(JET_paramEventLoggingLevel);}
 		void set(int64 NewVal) {SetLongSysParm(JET_paramEventLoggingLevel, NewVal);}
 	}
 
+	///<summary>This parameter supplies an application specific string that will be added to any event log messages that are emitted by the database engine.</summary>
 	property String ^EventSource
 	{
 		String ^get() {return GetStringSysParm(JET_paramEventSource);}
 		void set(String ^NewVal) {SetStringSysParm(JET_paramEventSource, NewVal);}
 	}
 
+	///<summary>This parameter can be used to control which event log the database engine uses for its event log messages.</summary>
 	property String ^EventSourceKey
 	{
 		String ^get() {return GetStringSysParm(JET_paramEventSourceKey);}
 		void set(String ^NewVal) {SetStringSysParm(JET_paramEventSourceKey, NewVal);}
 	}
 
+	///<summary>When this parameter is true, informational event log messages that would ordinarily be generated by the database engine will be suppressed.</summary>
 	property bool NoInformationEvent
 	{
 		bool get() {return GetBoolSysParm(JET_paramNoInformationEvent);}

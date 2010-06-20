@@ -10,6 +10,9 @@ using EseLinq.Storage;
 
 namespace EseLinq
 {
+	/// <summary>
+	/// Provides extension methods to EseObjects for Enumerable and Queryable interfaces.
+	/// </summary>
 	public static class TableAsEnumerableExt
 	{
 		/// <summary>
@@ -191,16 +194,25 @@ namespace EseLinq
 			this.direction = direction;
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a forward-scrolling key range delimited by the specified keys.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewForward(Table table, Seekable start_key, Limitable end_key)
 		{
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a forward-scrolling key range delimited by the specified keys.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewForward(Table table, Seekable start_key, Limitable end_key, IRecordBridge<T> bridge)
 		{
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1, bridge);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a forward-scrolling key range using a single field as the prefix to a wildcard in a range that includes all values starting with that key.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewForward(Table table, Column col, object k1)
 		{
 			var field = new Field(col, k1);
@@ -210,6 +222,9 @@ namespace EseLinq
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, 1);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a forward-scrolling key range using a single field as the prefix to a wildcard in a range that includes all values starting with that key.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewForward(Table table, string col, object k1)
 		{
 			var field = new Field(new Column(table, col), k1);
@@ -220,16 +235,25 @@ namespace EseLinq
 		}
 
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a backward-scrolling key range delimited by the specified keys.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Seekable start_key, Limitable end_key)
 		{
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a backward-scrolling key range delimited by the specified keys.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Seekable start_key, Limitable end_key, IRecordBridge<T> bridge)
 		{
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1, bridge);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a backward-scrolling key range using a single field as the prefix to a wildcard in a range that includes all values starting with that key.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewBackward(Table table, Column col, object k1)
 		{
 			var field = new Field(col, k1);
@@ -239,6 +263,9 @@ namespace EseLinq
 			return new KeyRangeAsEnumerable<T>(table, start_key, end_key, -1);
 		}
 
+		/// <summary>
+		/// Creates a KeyRangeAsEnumerable for a backward-scrolling key range using a single field as the prefix to a wildcard in a range that includes all values starting with that key.
+		/// </summary>
 		public static KeyRangeAsEnumerable<T> NewBackward(Table table, string col, object k1)
 		{
 			var field = new Field(new Column(table, col), k1);

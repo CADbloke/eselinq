@@ -29,6 +29,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+///<summary>Object oriented transaction management.</summary>
 public ref class Transaction
 {
 public:
@@ -64,6 +65,7 @@ private:
 	{}
 
 public:
+	///<summary>Begins a new transaction that lasts for the lifetime of the object. Calls JetBeginTransaction. </summary>
 	Transaction(EseObjects::Session ^Session) :
 		_Status(Status::Active),
 		_Session(Session),
@@ -73,13 +75,14 @@ public:
 		Session->_CurrentTrans = this;
 	}
 
+	///<summary>Begins a new readonly transaction that lasts for the lifetime of the object. Calls JetBeginTransaction2 with JET_bitTransactionReadOnly.</summary>
 	static Transaction ^BeginReadonly(EseObjects::Session ^Session)
 	{
 		Session->BeginReadonlyTransaction();
 		return gcnew Transaction(Session, false);
 	}
 
-	//Creates a transaction object for use with cursors, etc. without the actual transaction. Not recommended.
+	///<summary>Creates a transaction object for use with cursors, etc. without the actual transaction. Not recommended.</summary>
 	static Transaction ^CreateZero(EseObjects::Session ^Session)
 	{
 		return gcnew Transaction(Session, Status::Zero, nullptr);
@@ -129,6 +132,7 @@ private:
 	}
 
 public:
+	///<summary>Cancels a transaction. Calls JetRollback.</summary>
 	void Rollback()
 	{
 		CheckCloseState();
@@ -137,7 +141,8 @@ public:
 		Close();
 	}
 
-	//called on any transaction in the same chain, rolls back (and marks as such) all trans currently open on the session
+	///<summary>Cancels all current transactions. Calls JetRollback with JET_bitRollbackAll.</summary>
+	///<remarks>Called on any transaction in the same chain, rolls back (and marks as such) all trans currently open on the session</remarks>
 	void RollbackAll()
 	{
 		Session->RollbackAllTransactions();
@@ -157,6 +162,7 @@ public:
 		Session->_CurrentTrans = nullptr;
 	}
 
+	///<summary>Commits a transaction. Calls JetCommitTransaction.</summary>
 	void Commit()
 	{
 		CheckCloseState();
@@ -165,6 +171,7 @@ public:
 		Close();
 	}
 
+	///<summary>Commits a transaction with lazy flush semantics. Calls JetCommitTransaction with JET_bitCommitLazyFlush.</summary>
 	void CommitLazyFlush()
 	{
 		CheckCloseState();
@@ -173,6 +180,7 @@ public:
 		Close();
 	}
 
+	///<summary>Calls JetCommitTransaction with JET_bitWaitLastLevel0Commit</summary>
 	void CommitWaitLastLevel0Commit()
 	{
 		CheckCloseState();
@@ -181,6 +189,7 @@ public:
 		Close();
 	}
 
+	///<summary>Calls JetCommitTransaction with JET_bitWaitAllLevel0Commit</summary>
 	void CommitWaitAllLevel0Commit()
 	{
 		CheckCloseState();

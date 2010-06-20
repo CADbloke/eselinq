@@ -36,7 +36,10 @@ using EseObjects;
 
 namespace EseLinq.Storage
 {
-
+	/// <summary>
+	/// Record level bridge for specialized marshalling of objects as records in the database.
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
 	public interface IRecordBridge<T>
 	{
 		void Write(IWriteRecord wr, T o);
@@ -51,6 +54,10 @@ namespace EseLinq.Storage
 		void WriteToRecord(IWriteRecord wr);
 	}
 
+	/// <summary>
+	/// Explicit control by individual objects over serialization.
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
 	public sealed class RecordLevelExplicit<T> : IRecordBridge<T>
 		where T : IRecordSerializable
 	{
