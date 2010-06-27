@@ -1239,7 +1239,7 @@ public:
 		LoadKey(k2, JET_bitFullColumnEndLimit);
 		SetIxRange(JET_bitRangeUpperLimit | JET_bitRangeInclusive);
 		
-		return has_currency;
+		return HasCurrent;
 	}
 
 	///<summary>Positions the cursor to k1 and sets a lower limit to stop at k2, so that by scrolling backward the values within the range will be read.
@@ -1257,7 +1257,7 @@ public:
 		LoadKey(k2, JET_bitFullColumnStartLimit);
 		SetIxRange(JET_bitRangeInclusive);
 		
-		return has_currency;
+		return HasCurrent;
 	}
 
 	///<summary>Positions the cursor to beginning of k1 and sets a upper limit to stop at the end of k1, so that by scrolling forward the values within the range will be read.
@@ -1279,7 +1279,7 @@ public:
 		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnEndLimit);
 		SetIxRange(JET_bitRangeUpperLimit | JET_bitRangeInclusive);
 		
-		return has_currency;
+		return HasCurrent;
 	}
 
 	///<summary>Positions the cursor to beginning of k1 and sets a upper limit to stop at the end of k1, so that by scrolling backward the values within the range will be read.
@@ -1301,7 +1301,7 @@ public:
 		Key::LoadSingleFieldIntoTableID(sesid, tabid, Bridge, k1, JET_bitFullColumnStartLimit);
 		SetIxRange(JET_bitRangeInclusive);
 		
-		return has_currency;
+		return HasCurrent;
 	}
 
 	///<summary>Cancels any range limit currently in effect.</summary>
@@ -1523,6 +1523,14 @@ public:
 			jrp.centriesTotal= rp.EntriesTotal;
 
 			EseException::RaiseOnError(JetGotoPosition(Session->_JetSesid, TableID->_JetTableID, &jrp));
+		}
+	}
+
+	property bool HasCurrent
+	{
+		bool get()
+		{
+			return JetMove(Session->_JetSesid, TableID->_JetTableID, 0, 0) != JET_errNoCurrentRecord;
 		}
 	}
 
