@@ -262,11 +262,11 @@ namespace EseLinq.Storage
 			List<ColumnLink > links = new List<ColumnLink >();
 
 			foreach(FieldInfo fi in ty.GetFields(BindingFlags.Public | BindingFlags.Instance))
-				if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentFieldAttribute))) //don't save if nonpersistent
+				if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentAttribute))) //don't save if nonpersistent
 					links.Add(MakeColumnLink(table, fi, new FieldLink(fi), Prefix));
 
 			foreach(PropertyInfo pi in ty.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-				if(null == Attribute.GetCustomAttribute(pi, typeof(PersistentPropertyAttribute))) //only save if a persistent property
+				if(null == Attribute.GetCustomAttribute(pi, typeof(NonpersistentAttribute))) //don't save if nonpersistent
 					links.Add(MakeColumnLink(table, pi, new PropertyLink(pi), Prefix));
 
 			return links.ToArray();
@@ -344,11 +344,11 @@ namespace EseLinq.Storage
 				string MemberPrefix = ColName + ",";
 
 				foreach(FieldInfo fi in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
-					if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentFieldAttribute))) //don't save if nonpersistent
+					if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentAttribute))) //don't save if nonpersistent
 						MakeColumnCreateOptions(CreateOpts, fi, fi.FieldType, MemberPrefix, TypeMap);
 
 				foreach(PropertyInfo pi in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-					if(null == Attribute.GetCustomAttribute(pi, typeof(PersistentPropertyAttribute))) //only save if a persistent property
+					if(null == Attribute.GetCustomAttribute(pi, typeof(NonpersistentAttribute)))//don't save if nonpersistent
 						MakeColumnCreateOptions(CreateOpts, pi, pi.PropertyType, MemberPrefix, TypeMap);
 
 				return;
@@ -423,11 +423,11 @@ namespace EseLinq.Storage
 			var tco = Table.CreateOptions.NewWithLists(TabName);
 
 			foreach(FieldInfo fi in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
-				if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentFieldAttribute))) //don't save if nonpersistent
+				if(null == Attribute.GetCustomAttribute(fi, typeof(NonpersistentAttribute))) //don't save if nonpersistent
 					MakeColumnCreateOptions(tco.Columns, fi, fi.FieldType, "", TypeMap);
 
 			foreach(PropertyInfo pi in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-				if(null == Attribute.GetCustomAttribute(pi, typeof(PersistentPropertyAttribute))) //only save if a persistent property
+				if(null == Attribute.GetCustomAttribute(pi, typeof(NonpersistentAttribute))) //don't save if nonpersistent
 					MakeColumnCreateOptions(tco.Columns, pi, pi.PropertyType, "", TypeMap);
 
 			foreach(IndexAttribute ixa in Attribute.GetCustomAttributes(type, typeof(IndexAttribute)))

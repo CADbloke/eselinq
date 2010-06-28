@@ -100,14 +100,9 @@ namespace EseLinq.Storage
 	public class MemberwiseStorageAttribute : Attribute
 	{}
 
-	///<summary>By default, only fields are saved or restored. Attaching this attribute to a property will cause it to be saved and restored like a field.</summary>
-	[AttributeUsageAttribute(AttributeTargets.Property)]
-	public class PersistentPropertyAttribute : Attribute
-	{}
-
-	///<summary>By default, all public fields are saved or restored. Attaching this attribute to a field will prevent it from being saved or restored.</summary>
-	[AttributeUsageAttribute(AttributeTargets.Field)]
-	public class NonpersistentFieldAttribute : Attribute
+	///<summary>By default, all public fields and properties are saved or restored. Attaching this attribute to a member will prevent it from being saved or restored.</summary>
+	[AttributeUsageAttribute(AttributeTargets.Field | AttributeTargets.Property)]
+	public class NonpersistentAttribute : Attribute
 	{}
 
 	///<summary>Overrides name of the table. Defaults to the name of the member.</summary>
