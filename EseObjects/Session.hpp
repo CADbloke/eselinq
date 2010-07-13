@@ -97,7 +97,7 @@ public:
 	}
 
 	///<summary>Provides the internal JET_SESID handle that represents the session to ESE.</summary>
-	property IntPtr JetSesid
+	property IntPtr JetSesID
 	{
 		IntPtr get()
 		{

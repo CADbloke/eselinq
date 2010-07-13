@@ -338,13 +338,11 @@ public:
 		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
 	};
 
-	property IntPtr JetDbID
+	property ulong JetDbID
 	{
-		IntPtr get()
+		ulong get()
 		{
-			JET_DBID JetDbidCopy = _JetDbid;
-
-			return marshal_as<IntPtr>(JetDbidCopy);
+			return _JetDbid;
 		}
 	}
 };
