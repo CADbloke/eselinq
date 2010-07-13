@@ -1581,6 +1581,16 @@ public:
 		return JetGetCursorInfo(Session->_JetSesid, TableID->_JetTableID, null, 0, 0) == JET_errWriteConflict;
 	}
 
+	property IntPtr JetTableID
+	{
+		IntPtr get()
+		{
+			JET_TABLEID JetTableidCopy = _TableID->_JetTableID;
+
+			return marshal_as<IntPtr>(JetTableidCopy);
+		}
+	}
+
 internal:
 	property EseObjects::TableID ^TableID
 	{

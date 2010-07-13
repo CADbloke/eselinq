@@ -592,6 +592,16 @@ public:
 		void set(EseObjects::Bridge ^bridge) {_TableID->Bridge = bridge;};
 	};
 
+	property IntPtr JetTableID
+	{
+		IntPtr get()
+		{
+			JET_TABLEID JetTableidCopy = _TableID->_JetTableID;
+
+			return marshal_as<IntPtr>(JetTableidCopy);
+		}
+	}
+
 internal:
 	property EseObjects::TableID ^TableID
 	{

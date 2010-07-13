@@ -337,4 +337,14 @@ public:
 		EseObjects::Bridge ^get() {return _Bridge;};
 		void set(EseObjects::Bridge ^bridge) {_Bridge = bridge;};
 	};
+
+	property IntPtr JetDbID
+	{
+		IntPtr get()
+		{
+			JET_DBID JetDbidCopy = _JetDbid;
+
+			return marshal_as<IntPtr>(JetDbidCopy);
+		}
+	}
 };
