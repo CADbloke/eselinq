@@ -654,7 +654,33 @@ public:
 		///Completes the update, inserting or updating the row data.
 		///No further updates can be made with this object after calling this function. Calls JetUpdate.
 		///</summary>
-		Bookmark ^Complete()
+		void Complete()
+		{
+			if(!Active)
+				throw gcnew InvalidOperationException("Update is no longer active. It has already been completed or canceled");
+
+			ulong buffszrq = 0;
+
+			JET_ERR status = JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, null, 0, &buffszrq);
+
+			switch(status)
+			{
+			case JET_errSuccess:
+				break;
+
+			default:
+				EseException::RaiseOnError(status);
+			}
+
+			Active = false;
+		}
+
+		///<summary>
+		///Completes the update, inserting or updating the row data.
+		///No futher updates can be made with this object after calling this function. Calls JetUpdate.
+		///Retrieves a bookmark for the updated row.
+		///</summary>
+		Bookmark ^CompleteWithBookmark()
 		{
 			if(!Active)
 				throw gcnew InvalidOperationException("Update is no longer active. It has already been completed or canceled");
@@ -663,7 +689,8 @@ public:
 
 			try
 			{
-				ulong buffsz = 0;
+				ulong buffsz = JET_cbBookmarkMost;
+				buff = new uchar[buffsz];
 				ulong buffszrq = 0;
 
 				JET_ERR status = JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffsz, &buffszrq);
@@ -674,19 +701,20 @@ public:
 					break;
 
 				case JET_errBufferTooSmall:
-					buff = new uchar[buffszrq];
-					buffsz = buffszrq;
+					delete[] buff;
+					//buffsz = buffszrq; //apparently, buffszrq doesn't actaully return the required size
+					buff = new uchar[JET_cbBookmarkMost * 8];
+					
+					//let's try it again with a bigger buffer
 					status = JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffsz, &buffszrq);
-				//fall through
-				default:
-					EseException::RaiseOnError(status);
 				}
+				
+				EseException::RaiseOnError(status);
 
 				Active = false;
 
-				Bookmark ^Bkmk = gcnew Bookmark(buffsz, buff);
-
-				buff = nullptr; //now owned by Bookmark, don't want to free here
+				Bookmark ^Bkmk = gcnew Bookmark(buffszrq, buff);
+				buff = null; //now owned by Bookmark, don't want to free here
 
 				return Bkmk;
 			}
@@ -695,6 +723,27 @@ public:
 				if(buff)
 					delete[] buff;
 			}
+		}
+
+		///<summary>
+		///Completes the update, inserting or updating the row data.
+		///No futher updates can be made with this object after calling this function. Calls JetUpdate.
+		///Seeks to updated record. Use to go to a newly inserted record.
+		///</summary>
+		void CompleteSeek()
+		{
+			if(!Active)
+				throw gcnew InvalidOperationException("Update is no longer active. It has already been completed or canceled");
+
+			ulong buffsz = 2048;
+			uchar *buff = static_cast<uchar *>(alloca(buffsz));
+			ulong buffszrq = 0;
+
+			EseException::RaiseOnError(JetUpdate(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffsz, &buffszrq));
+
+			Active = false;
+
+			EseException::RaiseOnError(JetGotoBookmark(_Cursor->Session->_JetSesid, _Cursor->TableID->_JetTableID, buff, buffszrq));
 		}
 
 		///<summary>
