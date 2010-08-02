@@ -215,6 +215,10 @@ template <> DateTime from_memblock(bool &success, void *buff, ulong max, JET_COL
 	case JET_coltypDateTime:
 	case JET_coltypIEEEDouble:
 		return DateTime::FromOADate(*reinterpret_cast<double *>(buff));
+
+	case JET_coltypCurrency:
+	case JET_coltypLong:
+		return DateTime(*reinterpret_cast<int64 *>(buff));
 	}
 
 	success = false;
@@ -578,6 +582,11 @@ template <> bool to_memblock(DateTime t, void *&buff, ulong &max, bool &empty, J
 	case JET_coltypDateTime:
 	case JET_coltypIEEEDouble:
 		alloc_and_assign<double, double>(t.ToOADate(), buff, max, fl);
+		return true;
+
+	case JET_coltypCurrency:
+	case JET_coltypLongLong:
+		alloc_and_assign<int64, int64>(t.Ticks, buff, max, fl);
 		return true;
 	}
 
