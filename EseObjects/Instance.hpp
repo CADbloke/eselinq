@@ -177,16 +177,19 @@ public:
 	void Create(String ^InstanceName, String ^DisplayName)
 	{
 		if(_State > InstanceState::Global)
-			throw gcnew InvalidOperationException(L"Object must be in Global state to call Create");
+		throw gcnew InvalidOperationException(L"Object must be in Global state to call Create");
 
 		JET_INSTANCE JetInstanceCopy = null;
 		marshal_context mc;
+		JET_ERR err;
 
-		EseException::RaiseOnError(JetCreateInstance2_demand(&JetInstanceCopy, mc.marshal_as<const char*>(InstanceName), mc.marshal_as<const char*>(DisplayName), 0));
+		err = JetCreateInstance2_demand(&JetInstanceCopy, mc.marshal_as<const char*>(InstanceName), mc.marshal_as<const char*>(DisplayName), 0);
 
 		_JetInstance = JetInstanceCopy;
 
 		_State = InstanceState::Created;
+
+		EseException::RaiseOnError(err);
 	}
 
 	/// <summary>
@@ -195,6 +198,7 @@ public:
 	void Init()
 	{
 		JET_INSTANCE JetInstanceCopy = null;
+		JET_ERR err;
 
 		switch(_State)
 		{
@@ -206,8 +210,9 @@ public:
 
 		case InstanceState::Created:
 			JetInstanceCopy = _JetInstance;
-			EseException::RaiseOnError(JetInit(&JetInstanceCopy));
+			err = JetInit(&JetInstanceCopy);
 			_JetInstance = JetInstanceCopy;
+			EseException::RaiseOnError(err);
 			break;
 		}
 	}
