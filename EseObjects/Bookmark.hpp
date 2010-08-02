@@ -36,6 +36,7 @@
 ///See SecondaryBookmark for positioning within a secondary index.
 ///<pr/>A bookmark is only valid in the table it was created from.
 ///<pr/>The bookmark's value is stable for the lifetime of the corresponding row. You can convert the bookmark to/from a byte array to save or restore it.
+///<pr/>A bookmark can also be natively bridged to or from a Binary or LongBinary type column.
 ///<pr/>CompareTo will sort in the same order as the database index.
 ///</remarks>
 public ref class Bookmark : public Seekable, IComparable<Bookmark ^>, IComparable
@@ -179,3 +180,14 @@ internal:
 		EseException::RaiseOnError(status);
 	}
 };
+
+Bookmark ^BookmarkFromMemblock(void *buff, ulong max)
+{
+	return gcnew Bookmark(max, static_cast<uchar *>(buff));
+}
+
+void BookmarkGetBuffer(Bookmark ^t, void *&buff, ulong &max)
+{
+	buff = t->_JetBookmark;
+	max = t->_BookmarkLength;
+}

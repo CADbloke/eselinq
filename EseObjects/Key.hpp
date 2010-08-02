@@ -33,6 +33,7 @@
 ///<remarks>
 ///<pr/>A key is only valid in the index it was created from.
 ///<pr/>The key's value is stable.  You can convert the key to/from a byte array to save or restore it.
+///<pr/>A key can also be natively bridged to or from a Binary or LongBinary type column.
 ///<pr/>CompareTo will sort in the same order as the database index.
 ///</remarks>
 public ref class Key : public Seekable, IComparable<Key ^>, IComparable
@@ -46,6 +47,11 @@ internal:
 		if(_JetKey)
 			delete[] _JetKey;
 	}
+
+	Key(ulong KeyLength, uchar *JetKey) :
+		_KeyLength(KeyLength),
+		_JetKey(JetKey)
+	{}
 
 	static void LoadFieldIntoTableID(JET_SESID sesid, JET_TABLEID tabid, Bridge ^Bridge, Column ^Col, Object ^Val, JET_GRBIT flags)
 	{
@@ -281,3 +287,14 @@ internal:
 		EseException::RaiseOnError(status);
 	}
 };
+
+Key ^KeyFromMemblock(void *buff, ulong max)
+{
+	return gcnew Key(max, static_cast<uchar *>(buff));
+}
+
+void KeyGetBuffer(Key ^t, void *&buff, ulong &max)
+{
+	buff = t->_JetKey;
+	max = t->_KeyLength;
+}

@@ -33,6 +33,7 @@
 ///<remarks>SecondaryBookmarks can only seek alone if the key is unique. Otherwise, you must also use a primary bookmark.
 ///<pr/>A secondary bookmark is only valid with the same index it was created from.
 ///<pr/>The secondary bookmark's value is stable for the lifetime of the corresponding row, as long as the indexed fields don't change. You can convert the bookmark to/from a byte array to save or restore it.
+///<pr/>A secondary bookmark can also be natively bridged to or from a Binary or LongBinary type column.
 ///<pr/>CompareTo will sort in the same order as the database index.
 ///</remarks>
 
@@ -48,6 +49,11 @@ internal:
 		if(_JetBookmark)
 			delete[] _JetBookmark;
 	}
+
+	SecondaryBookmark(ulong BookmarkLength, uchar *JetBookmark) :
+		_BookmarkLength(BookmarkLength),
+		_JetBookmark(JetBookmark)
+	{}
 
 public:
 	SecondaryBookmark(array<uchar> ^Bytes) :
@@ -154,3 +160,14 @@ internal:
 		EseException::RaiseOnError(status);
 	}
 };
+
+SecondaryBookmark ^SecondaryBookmarkFromMemblock(void *buff, ulong max)
+{
+	return gcnew SecondaryBookmark(max, static_cast<uchar *>(buff));
+}
+
+void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, void *&buff, ulong &max)
+{
+	buff = t->_JetBookmark;
+	max = t->_BookmarkLength;
+}

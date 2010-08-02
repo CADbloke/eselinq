@@ -36,6 +36,8 @@ ref class Table;
 ref class Cursor;
 ref class Column;
 ref class Key;
+ref class Bookmark;
+ref class SecondaryBookmark;
 ref struct Bridge;
 interface struct ReadRecord;
 interface struct WriteRecord;
@@ -51,6 +53,14 @@ JET_SESID GetCursorSesid(Cursor ^Csr);
 Bridge ^GetCursorBridge(Cursor ^Csr);
 
 Bridge ^GetDefaultBridge();
+
+Key ^KeyFromMemblock(void *buff, ulong max);
+Bookmark ^BookmarkFromMemblock(void *buff, ulong max);
+SecondaryBookmark ^SecondaryBookmarkFromMemblock(void *buff, ulong max);
+
+void KeyGetBuffer(Key ^t, void *&buff, ulong &max);
+void BookmarkGetBuffer(Bookmark ^t, void *&buff, ulong &max);
+void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, void *&buff, ulong &max);
 
 ///<summary>Extra options for Unicode mapping. Represents JET_UNICODEINDEX.dwMapFlags. See Win32 LCMapMapString for option details. LCMAP_SORTKEY must always be included.</summary>
 public value struct UnicodeMapFlags

@@ -221,6 +221,51 @@ template <> DateTime from_memblock(bool &success, void *buff, ulong max, JET_COL
 	return DateTime();
 }
 
+template <> Key ^from_memblock(bool &success, void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
+{
+	success = true; //successful until determined otherwise
+
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		return KeyFromMemblock(buff, max);
+	}
+
+	success = false;
+	return nullptr;
+}
+
+template <> Bookmark ^from_memblock(bool &success, void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
+{
+	success = true; //successful until determined otherwise
+
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		return BookmarkFromMemblock(buff, max);
+	}
+
+	success = false;
+	return nullptr;
+}
+
+template <> SecondaryBookmark ^from_memblock(bool &success, void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
+{
+	success = true; //successful until determined otherwise
+
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		return SecondaryBookmarkFromMemblock(buff, max);
+	}
+
+	success = false;
+	return nullptr;
+}
+
 Object ^from_memblock_binserialize(bool &success, void *buff, ulong max, JET_COLTYP coltyp, ushort cp)
 {
 	bool to_array_success;
@@ -322,6 +367,12 @@ Object ^from_memblock(bool &success, Type ^type, void *bytes, ulong size, JET_CO
 		return from_memblock<array<uchar> ^>(success, bytes, size, coltyp, cp);
 	if(type == DateTime::typeid)
 		return from_memblock<DateTime>(success, bytes, size, coltyp, cp);
+	if(type == Key::typeid)
+		return from_memblock<Key ^>(success, bytes, size, coltyp, cp);
+	if(type == Bookmark::typeid)
+		return from_memblock<Bookmark ^>(success, bytes, size, coltyp, cp);
+	if(type == SecondaryBookmark::typeid)
+		return from_memblock<SecondaryBookmark ^>(success, bytes, size, coltyp, cp);
 	if(type == Object::typeid)
 		return from_memblock(success, bytes, size, coltyp, cp);
 	if(type->IsSerializable)
@@ -533,6 +584,72 @@ template <> bool to_memblock(DateTime t, void *&buff, ulong &max, bool &empty, J
 	return false;
 }
 
+template <> bool to_memblock(Key ^t, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
+{
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		void *src_buff = 0;
+		if(src_buff)
+		{
+			KeyGetBuffer(t, src_buff, max);
+			buff = fl.alloc_array<uchar>(max);
+			memcpy(buff, src_buff, max);
+			empty = max == 0;
+			return true;
+		}
+		else
+			return false;
+	}
+
+	return false;
+}
+
+template <> bool to_memblock(Bookmark ^t, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
+{
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		void *src_buff = 0;
+		BookmarkGetBuffer(t, src_buff, max);
+		if(src_buff)
+		{
+			buff = fl.alloc_array<uchar>(max);
+			memcpy(buff, src_buff, max);
+			empty = max == 0;
+			return true;
+		}
+		else
+			return false;
+	}
+
+	return false;
+}
+
+template <> bool to_memblock(SecondaryBookmark ^t, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
+{
+	switch(coltyp)
+	{
+	case JET_coltypBinary:
+	case JET_coltypLongBinary:
+		void *src_buff = 0;
+		SecondaryBookmarkGetBuffer(t, src_buff, max);
+		if(src_buff)
+		{
+			buff = fl.alloc_array<uchar>(max);
+			memcpy(buff, src_buff, max);
+			empty = max == 0;
+			return true;
+		}
+		else
+			return false;
+	}
+
+	return false;
+}
+
 bool to_memblock_binserialize(Object ^o, void *&buff, ulong &max, bool &empty, JET_COLTYP coltyp, ushort cp, marshal_context %mc, free_list &fl)
 {
 	System::Runtime::Serialization::Formatters::Binary::BinaryFormatter ^formatter = gcnew System::Runtime::Serialization::Formatters::Binary::BinaryFormatter();
@@ -581,6 +698,12 @@ template <> bool to_memblock(Object ^o, void *&buff, ulong &max, bool &empty, JE
 		return to_memblock<array<uchar> ^>(safe_cast<array<uchar> ^>(o), buff, max, empty, coltyp, cp, mc, fl);
 	if(ty == DateTime::typeid)
 		return to_memblock<DateTime>(safe_cast<DateTime>(o), buff, max, empty, coltyp, cp, mc, fl);
+	if(ty == Key::typeid)
+		return to_memblock<Key ^>((Key ^)o, buff, max, empty, coltyp, cp, mc, fl);
+	if(ty == Bookmark::typeid)
+		return to_memblock<Bookmark ^>((Bookmark ^)o, buff, max, empty, coltyp, cp, mc, fl);
+	if(ty == SecondaryBookmark::typeid)
+		return to_memblock<SecondaryBookmark ^>((SecondaryBookmark ^)o, buff, max, empty, coltyp, cp, mc, fl);
 	
 	if(o->GetType()->IsSerializable)
 		return to_memblock_binserialize(o, buff, max, empty, coltyp, cp, mc, fl);
