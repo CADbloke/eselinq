@@ -1531,7 +1531,7 @@ public:
 	///</remarks>
 	ulong ForwardRecordCount()
 	{
-		return ForwardRecordCount(0);
+		return ForwardRecordCount(MAXUINT);
 	}
 
 	///<summary>Approximate position within an index. Use with Cursor.ApproximatePosition. Represents a JET_RECPOS.</summary>
