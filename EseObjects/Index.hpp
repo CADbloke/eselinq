@@ -522,6 +522,16 @@ public:
 		return gcnew Index(co, sesid, tableid);
 	}
 
+	static void Delete(Table ^Table, String ^Name)
+	{
+		JET_TABLEID tableid = GetTableTableID(Table);
+		JET_SESID sesid = GetTableSesid(Table);
+		marshal_context mc;
+		char const *namestr = mc.marshal_as<char const *>(Name);
+
+		EseException::RaiseOnError(JetDeleteIndex(sesid, tableid, namestr));
+	}
+
 public:
 	property ulong ColumnCount
 	{

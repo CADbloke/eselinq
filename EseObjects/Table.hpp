@@ -574,6 +574,18 @@ public:
 		return NCursor;
 	}
 
+	///<summary>
+	///Deletes a table from the database. Calls JetDeleteTable.
+	///</summary>
+	static void Delete(Database ^Db, String ^Name)
+	{
+		marshal_context mc;
+
+		char const *namestr = mc.marshal_as<char const *>(Name);
+
+		EseException::RaiseOnError(JetDeleteTable(Db->Session->_JetSesid, Db->_JetDbid, namestr));
+	}
+
 	///<summary>Session associated with this table handle</summary>
 	property EseObjects::Session ^Session
 	{

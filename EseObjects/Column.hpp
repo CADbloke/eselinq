@@ -314,7 +314,7 @@ public:
 		return ret;
 	}
 
-	///<summary>Deletes this column. Must be associated with the specified table. Calls JetDeleteTable.</summary>
+	///<summary>Deletes this column. Must be associated with the specified table. Calls JetDeleteColumn.</summary>
 	void DeleteColumn(Table ^SrcTable)
 	{
 		marshal_context mc;
