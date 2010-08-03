@@ -436,8 +436,8 @@ SortedList<JET_COLUMNID, Column ^> ^QueryTableColumns(JET_SESID JetSesid, JET_TA
 			(
 				jcd,
 				astring_from_memblock(colname, jrc[0].cbActual),
-				astring_from_memblock(jcb.szBaseColumnName, jrc[9].cbActual),
-				astring_from_memblock(jcb.szBaseTableName, jrc[10].cbActual)
+				astring_from_memblock(jcb.szBaseTableName, jrc[9].cbActual),
+				astring_from_memblock(jcb.szBaseColumnName, jrc[10].cbActual)
 			);
 			
 			Cols->Add(jcd.columnid, Col);
