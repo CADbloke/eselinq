@@ -1490,23 +1490,35 @@ public:
 	static ulong IntersectIndexes([Out] Cursor ^%Results, [Out] Column ^%BookmarkCol, ICollection<Cursor ^> ^Indexes)
 	{
 		free_list fl;
-		JET_SESID sesid;
+		EseObjects::Session ^sess;
 		JET_INDEXRANGE *jixrs;
 		JET_RECORDLIST jrl = {sizeof jrl};
+
+		if(Indexes->Count == 0)
+			throw gcnew ArgumentException("Need to specify at least one cursor to intersect");
 
 		jixrs = fl.alloc_array_zero<JET_INDEXRANGE>(Indexes->Count);
 		ulong i = 0;
 
 		for each(Cursor ^Csr in Indexes)
 		{
-			sesid = Csr->Session->_JetSesid;
+			sess = Csr->Session;
 			jixrs[i].cbStruct = sizeof jixrs[i];
 			jixrs[i].tableid = Csr->_TableID->_JetTableID;
 			jixrs[i].grbit = JET_bitRecordInIndex;
 			i++;
 		}
 
-		EseException::RaiseOnError(JetIntersectIndexes(sesid, jixrs, Indexes->Count, &jrl, 0));
+		EseException::RaiseOnError(JetIntersectIndexes(sess->_JetSesid, jixrs, Indexes->Count, &jrl, 0));
+
+		JET_COLUMNDEF jcd = {sizeof jcd};
+		jcd.coltyp = JET_coltypBinary;
+		jcd.columnid = jrl.columnidBookmark;
+		jcd.grbit = JET_bitColumnNotNULL | JET_bitColumnTTKey;
+		BookmarkCol = gcnew Column(jcd, "bookmark", nullptr, nullptr);
+
+		EseObjects::TableID ^NTableID = gcnew EseObjects::TableID(jrl.tableid, sess->CurrentTransaction, gcnew EseObjects::Database(sess));
+		Results = gcnew Cursor(NTableID);
 
 		return jrl.cRecord;
 	}
