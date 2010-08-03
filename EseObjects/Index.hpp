@@ -498,7 +498,7 @@ public:
 	}
 
 	///<summary>Creates a new index on the specified table. Calls JetCreateIndex2.</summary>
-	Index ^Create(Table ^Table, CreateOptions %co)
+	static Index ^Create(Table ^Table, CreateOptions %co)
 	{
 		JET_TABLEID tableid = GetTableTableID(Table);
 		JET_SESID sesid = GetTableSesid(Table);
