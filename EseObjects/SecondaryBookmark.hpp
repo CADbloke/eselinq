@@ -154,7 +154,7 @@ internal:
 		case JET_errRecordDeleted:
 		case JET_errNoCurrentRecord:
 			HasCurrency = false;
-			break;
+			return;
 		}
 
 		EseException::RaiseOnError(status);
