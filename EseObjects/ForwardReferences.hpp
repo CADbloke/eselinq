@@ -54,13 +54,13 @@ Bridge ^GetCursorBridge(Cursor ^Csr);
 
 Bridge ^GetDefaultBridge();
 
-Key ^KeyFromMemblock(void *buff, ulong max);
-Bookmark ^BookmarkFromMemblock(void *buff, ulong max);
-SecondaryBookmark ^SecondaryBookmarkFromMemblock(void *buff, ulong max);
+Key ^KeyFromMemblock(uchar *buff, ulong max);
+Bookmark ^BookmarkFromMemblock(uchar *buff, ulong max);
+SecondaryBookmark ^SecondaryBookmarkFromMemblock(uchar *buff, ulong max);
 
-void KeyGetBuffer(Key ^t, void *&buff, ulong &max);
-void BookmarkGetBuffer(Bookmark ^t, void *&buff, ulong &max);
-void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, void *&buff, ulong &max);
+void KeyGetBuffer(Key ^t, uchar *&buff, ulong &max);
+void BookmarkGetBuffer(Bookmark ^t, uchar *&buff, ulong &max);
+void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, uchar *&buff, ulong &max);
 
 ///<summary>Extra options for Unicode mapping. Represents JET_UNICODEINDEX.dwMapFlags. See Win32 LCMapMapString for option details. LCMAP_SORTKEY must always be included.</summary>
 public value struct UnicodeMapFlags

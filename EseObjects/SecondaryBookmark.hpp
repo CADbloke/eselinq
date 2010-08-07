@@ -161,12 +161,12 @@ internal:
 	}
 };
 
-SecondaryBookmark ^SecondaryBookmarkFromMemblock(void *buff, ulong max)
+SecondaryBookmark ^SecondaryBookmarkFromMemblock(uchar *buff, ulong max)
 {
-	return gcnew SecondaryBookmark(max, static_cast<uchar *>(buff));
+	return gcnew SecondaryBookmark(max, buff);
 }
 
-void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, void *&buff, ulong &max)
+void SecondaryBookmarkGetBuffer(SecondaryBookmark ^t, uchar *&buff, ulong &max)
 {
 	buff = t->_JetBookmark;
 	max = t->_BookmarkLength;

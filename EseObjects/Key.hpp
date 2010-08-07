@@ -288,12 +288,12 @@ internal:
 	}
 };
 
-Key ^KeyFromMemblock(void *buff, ulong max)
+Key ^KeyFromMemblock(uchar *buff, ulong max)
 {
-	return gcnew Key(max, static_cast<uchar *>(buff));
+	return gcnew Key(max, buff);
 }
 
-void KeyGetBuffer(Key ^t, void *&buff, ulong &max)
+void KeyGetBuffer(Key ^t, uchar *&buff, ulong &max)
 {
 	buff = t->_JetKey;
 	max = t->_KeyLength;

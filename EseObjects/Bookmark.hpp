@@ -181,12 +181,12 @@ internal:
 	}
 };
 
-Bookmark ^BookmarkFromMemblock(void *buff, ulong max)
+Bookmark ^BookmarkFromMemblock(uchar *buff, ulong max)
 {
-	return gcnew Bookmark(max, static_cast<uchar *>(buff));
+	return gcnew Bookmark(max, buff);
 }
 
-void BookmarkGetBuffer(Bookmark ^t, void *&buff, ulong &max)
+void BookmarkGetBuffer(Bookmark ^t, uchar *&buff, ulong &max)
 {
 	buff = t->_JetBookmark;
 	max = t->_BookmarkLength;

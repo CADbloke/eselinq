@@ -233,7 +233,10 @@ template <> Key ^from_memblock(bool &success, void *buff, ulong max, JET_COLTYP 
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		return KeyFromMemblock(buff, max);
+		uchar *new_buff = new uchar[max];
+		memcpy(new_buff, buff, max);
+
+		return KeyFromMemblock(new_buff, max);
 	}
 
 	success = false;
@@ -248,7 +251,10 @@ template <> Bookmark ^from_memblock(bool &success, void *buff, ulong max, JET_CO
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		return BookmarkFromMemblock(buff, max);
+		uchar *new_buff = new uchar[max];
+		memcpy(new_buff, buff, max);
+
+		return BookmarkFromMemblock(new_buff, max);
 	}
 
 	success = false;
@@ -263,7 +269,10 @@ template <> SecondaryBookmark ^from_memblock(bool &success, void *buff, ulong ma
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		return SecondaryBookmarkFromMemblock(buff, max);
+		uchar *new_buff = new uchar[max];
+		memcpy(new_buff, buff, max);
+
+		return SecondaryBookmarkFromMemblock(new_buff, max);
 	}
 
 	success = false;
@@ -599,10 +608,10 @@ template <> bool to_memblock(Key ^t, void *&buff, ulong &max, bool &empty, JET_C
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		void *src_buff = 0;
+		uchar *src_buff = 0;
+		KeyGetBuffer(t, src_buff, max);
 		if(src_buff)
 		{
-			KeyGetBuffer(t, src_buff, max);
 			buff = fl.alloc_array<uchar>(max);
 			memcpy(buff, src_buff, max);
 			empty = max == 0;
@@ -621,7 +630,7 @@ template <> bool to_memblock(Bookmark ^t, void *&buff, ulong &max, bool &empty, 
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		void *src_buff = 0;
+		uchar *src_buff = 0;
 		BookmarkGetBuffer(t, src_buff, max);
 		if(src_buff)
 		{
@@ -643,7 +652,7 @@ template <> bool to_memblock(SecondaryBookmark ^t, void *&buff, ulong &max, bool
 	{
 	case JET_coltypBinary:
 	case JET_coltypLongBinary:
-		void *src_buff = 0;
+		uchar *src_buff = 0;
 		SecondaryBookmarkGetBuffer(t, src_buff, max);
 		if(src_buff)
 		{
