@@ -497,8 +497,24 @@ public:
 			throw gcnew ArgumentException("Unexpected end of index results");
 	}
 
+	///<summary>Opens an existing index on a table.</summary>
+	Index(Cursor ^Cursor, String ^Name) :
+		_JetIndexID(new JET_INDEXID)
+	{
+		marshal_context mc;
+		char const *index_namestr = mc.marshal_as<char const *>(Name);
+		JET_TABLEID tableid = GetCursorTableID(Cursor);
+		JET_SESID sesid = GetCursorSesid(Cursor);
+
+		array<Index ^> ^ix_arr = gcnew array<Index ^>(1);
+		ix_arr[0] = this;
+
+		if(!CollectInformation(sesid, tableid, index_namestr, ix_arr))
+			throw gcnew ArgumentException("Unexpected end of index results");
+	}
+
 	///<summary>Creates a new index on the specified table. Calls JetCreateIndex2.</summary>
-	static Index ^Create(Table ^Table, CreateOptions %co)
+	static Index ^Create(Table ^Table, CreateOptions co)
 	{
 		JET_TABLEID tableid = GetTableTableID(Table);
 		JET_SESID sesid = GetTableSesid(Table);
