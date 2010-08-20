@@ -1,13 +1,13 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
 // Project     :  EseLinq http://code.google.com/p/eselinq/
-// Copyright   :  (c) 2009 Christopher Smith
+// Copyright   :  (c) 2010 Christopher Smith
 // Maintainer  :  csmith32@gmail.com
-// Module      :  Test.EnumTest
+// Module      :  Test.DatabaseTests.Setup
 ///////////////////////////////////////////////////////////////////////////////
 //
 //This software is licenced under the terms of the MIT License:
 //
-//Copyright (c) 2009 Christopher Smith
+//Copyright (c) 2010 Christopher Smith
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -30,53 +30,79 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Text;
+using NUnit.Framework;
+using System.IO;
 using EseObjects;
 
-namespace Test.Functionality
+namespace Test.DatabaseTests
 {
-	delegate void DumpLine(string s);
-
-	class EnumTest
+	[SetUpFixture]
+	///<summary>Setup environment</summary>
+	public class E
 	{
-		public static void DumpContents(Session sess, Database db, DumpLine WriteLine)
+		public const string DatabaseName = "Test.edb";
+		public static string FileDirectory;
+
+		public static Instance I;
+		public static Session S;
+		public static Database D;
+
+		[SetUp]
+		public static void Setup()
 		{
-			using(var tr = new Transaction(sess))
+			try
 			{
-				foreach(string tname in db.TableNames)
-				{
-					WriteLine("-------" + tname);
-					using(var t = new Table(db, tname))
-					{
-						var columns = t.Columns;
-						var colstrs = new String[columns.Count];
-						for(int i = 0; i < columns.Count; i++)
-						{
-							colstrs[i] = columns[i].Name;
-						}
-						WriteLine(String.Join("|", colstrs));
-		
-						using(var c = new Cursor(t))
-						{
-							bool has_current = c.MoveFirst();
-
-							while(has_current)
-							{
-								var fields = c.RetrieveAllFields(0x1000);
-								var fieldstrs = new String[fields.Length];
-								for(uint i = 0; i < fields.Length; i++)
-								{
-									fieldstrs[i] = fields[i].Val.ToString();
-								}
-
-								WriteLine(String.Join("|", fieldstrs));
-								has_current = c.Move(1);
-							}
-						}
-					}
-				}
+				InstanceSetup();
+				SessionSetup();
+				DatabaseSetup();
 			}
+			catch(Exception)
+			{
+				Teardown(); //want this to run regardless
+				throw;
+			}
+		}
+
+		[TearDown]
+		public static void Teardown()
+		{
+			if(D != null)
+				D.Dispose();
+
+			if(S != null)
+				S.Dispose();
+
+			if(I != null)
+				I.Dispose();
+
+			if(FileDirectory != null)
+				Directory.Delete(FileDirectory, true);
+		}
+
+		static void InstanceSetup()
+		{
+			string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+			Directory.CreateDirectory(path);
+			FileDirectory = path + "\\";
+
+			I = new Instance();
+			I.NoInformationEvent = true;
+			I.CircularLog = true;
+			I.TempPath = FileDirectory;
+			I.LogFilePath = FileDirectory;
+			I.SystemPath = FileDirectory;
+			I.InitGlobal();
+		}
+
+		static void SessionSetup()
+		{
+			S = new Session(I);
+		}
+
+		static void DatabaseSetup()
+		{
+			var dco = new Database.CreateOptions{FileName = Path.Combine(FileDirectory, "test.edb"), OverwriteExisting = true};
+			D = Database.Create(S, dco);
 		}
 	}
 }

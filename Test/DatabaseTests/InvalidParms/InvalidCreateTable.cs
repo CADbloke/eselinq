@@ -1,13 +1,13 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
 // Project     :  EseLinq http://code.google.com/p/eselinq/
-// Copyright   :  (c) 2009 Christopher Smith
+// Copyright   :  (c) 2010 Christopher Smith
 // Maintainer  :  csmith32@gmail.com
-// Module      :  Test.TempTable
+// Module      :  Test.DatabaseTest.InvalidCreateTable
 ///////////////////////////////////////////////////////////////////////////////
 //
 //This software is licenced under the terms of the MIT License:
 //
-//Copyright (c) 2009 Christopher Smith
+//Copyright (c) 2010 Christopher Smith
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -31,48 +31,68 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
+using NUnit.Framework;
 using EseObjects;
 
-namespace Test.Functionality
+namespace Test.DatabaseTests
 {
-	class TempTable
+	[TestFixture]
+	class InvalidCreateTable
 	{
-		public static void Test(Session sess, Database db)
+		[Test]
+		[ExpectedException(typeof(CreateTableException), ExpectedMessage="JET_errInvalidColumnType", MatchType=MessageMatch.Contains)]
+		public static void BadColumnType()
 		{
-			using(var tr = new Transaction(sess))
+			using(var tr = new Transaction(E.S))
 			{
-				var cto = Table.CreateTempOptions.NewWithLists();
+				var Columns = new List<Column.CreateOptions>();
+				var Indexes = new List<Index.CreateOptions>();
 
-				cto.Columns.Add(new Column.CreateOptions{Type = Column.Type.Long, TTKey = true});
-
-				Column[] cols;
-
-				using(var csr = Table.CreateTemp(sess, cto, out cols))
+				var nt = new Table.CreateOptions
 				{
-					using(var upd = csr.BeginInsert())
-					{
-						upd.Set(cols[0], 3);
-						upd.Complete();
-					}
-					using(var upd = csr.BeginInsert())
-					{
-						upd.Set(cols[0], 4);
-						upd.Complete();
-					}
+					Name = "BadTable",
+					Columns = Columns,
+					Indexes = Indexes
+				};
 
-					csr.MoveFirst();
+				Columns.Add(new Column.CreateOptions
+				{
+					Name = "InvalidTable",
+					Type = (Column.Type)300
+				});
 
-					int val = csr.Retrieve<int>(cols[0]);
+				using(var tab = Table.Create(E.D, nt))
+				{} //nothing to do since this should fail
 
-					Console.WriteLine(val);
+				tr.Commit();
+			}
+		}
 
-					csr.Move(1);
+		[Test]
+		[ExpectedException(typeof(CreateTableException), ExpectedMessage = "JET_errInvalidName", MatchType = MessageMatch.Contains)]
+		public void ColumNameTooLong()
+		{
+			using(var tr = new Transaction(E.S))
+			{
+				var Columns = new List<Column.CreateOptions>();
+				var Indexes = new List<Index.CreateOptions>();
 
-					Console.WriteLine(csr.Retrieve<int>(cols[0]));
+				var nt = new Table.CreateOptions
+				{
+					Name = "BadTable",
+					Columns = Columns,
+					Indexes = Indexes
+				};
 
-					tr.Commit();
-				}
+				Columns.Add(new Column.CreateOptions
+				{
+					Name = new String('q', 100),
+					Type = Column.Type.Long
+				});
+
+				using(var tab = Table.Create(E.D, nt))
+				{} //nothing to do since this should fail
+				tr.Commit();
 			}
 		}
 	}

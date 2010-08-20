@@ -1,13 +1,13 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
 // Project     :  EseLinq http://code.google.com/p/eselinq/
-// Copyright   :  (c) 2009 Christopher Smith
+// Copyright   :  (c) 2010 Christopher Smith
 // Maintainer  :  csmith32@gmail.com
-// Module      :  Test.TestData
+// Module      :  Test.DatabaseTest.BasicTestData
 ///////////////////////////////////////////////////////////////////////////////
 //
 //This software is licenced under the terms of the MIT License:
 //
-//Copyright (c) 2009 Christopher Smith
+//Copyright (c) 2010 Christopher Smith
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -30,13 +30,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Text;
+using NUnit.Framework;
 using EseObjects;
 
-namespace Test.Functionality
+namespace Test.DatabaseTests
 {
-	public class TestData : IDisposable
+	public abstract class WithBasicData
 	{
 		public Table Order;
 		public Column OrderID;
@@ -60,9 +59,16 @@ namespace Test.Functionality
 		public Index OrderLineIx;
 		public Index OrderLineDescIx;
 
-		public TestData(Session sess, Database db)
+		[TestFixtureSetUp]
+		public void Setup()
 		{
-			using(var tr = new Transaction(sess))
+			CreateTables();
+			InsertTestData();
+		}
+
+		public void CreateTables()
+		{
+			using(var tr = new Transaction(E.S))
 			{
 				Column[] newcols;
 				Index[] newixs;
@@ -80,8 +86,8 @@ namespace Test.Functionality
 
 				ixco = Index.CreateOptions.NewSecondary("CustomerIx", "+Customer", false);
 				tco.Indexes.Add(ixco);
-				
-				Order = Table.Create(db, tco, out newcols, out newixs);
+
+				Order = Table.Create(E.D, tco, out newcols, out newixs);
 				OrderID = newcols[0];
 				OrderOpenDate = newcols[1];
 				OrderCustomer = newcols[2];
@@ -102,7 +108,7 @@ namespace Test.Functionality
 				ixco = Index.CreateOptions.NewSecondary("Name", "+Name", true);
 				tco.Indexes.Add(ixco);
 
-				Customer = Table.Create(db, tco, out newcols, out newixs);
+				Customer = Table.Create(E.D, tco, out newcols, out newixs);
 				CustomerID = newcols[0];
 				CustomerName = newcols[1];
 				CustomerIx = newixs[0];
@@ -121,15 +127,11 @@ namespace Test.Functionality
 				{
 					Name = "Desc",
 					Tuples = true,
-					TupleLimits = new Index.TupleLimits
-					{
-						LengthMin = 2
-					},
 					KeyColumns = "+Desc"
 				};
 				tco.Indexes.Add(ixco);
 
-				OrderLine = Table.Create(db, tco, out newcols, out newixs);
+				OrderLine = Table.Create(E.D, tco, out newcols, out newixs);
 				OrderLineOrder = newcols[0];
 				OrderLineSeq = newcols[1];
 				OrderLineDesc = newcols[2];
@@ -137,6 +139,14 @@ namespace Test.Functionality
 				OrderLineIx = newixs[0];
 				OrderLineDescIx = newixs[1];
 
+				tr.Commit();
+			}
+		}
+
+		public void InsertTestData()
+		{
+			using(var tr = new Transaction(E.S))
+			{
 				using(var c = new Cursor(Customer))
 				{
 					using(var u = c.BeginInsert())
@@ -278,11 +288,21 @@ namespace Test.Functionality
 			}
 		}
 
-		public void Dispose()
+		[TestFixtureTearDown]
+		public void Teardown()
 		{
-			Order.Dispose();
-			Customer.Dispose();
-			OrderLine.Dispose();
+			using(var tr = new Transaction(E.S))
+			{
+				Order.Dispose();
+				Customer.Dispose();
+				OrderLine.Dispose();
+
+				Table.Delete(E.D, "Order");
+				Table.Delete(E.D, "Customer");
+				Table.Delete(E.D, "OrderLine");
+
+				tr.Commit();
+			}
 		}
 	}
 }

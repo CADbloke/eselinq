@@ -1,13 +1,13 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
 // Project     :  EseLinq http://code.google.com/p/eselinq/
-// Copyright   :  (c) 2009 Christopher Smith
+// Copyright   :  (c) 2010 Christopher Smith
 // Maintainer  :  csmith32@gmail.com
-// Module      :  Test.Program
+// Module      :  Test.DatabaseTest.TempTable
 ///////////////////////////////////////////////////////////////////////////////
 //
 //This software is licenced under the terms of the MIT License:
 //
-//Copyright (c) 2009 Christopher Smith
+//Copyright (c) 2010 Christopher Smith
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -30,17 +30,47 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Text;
+using NUnit.Framework;
 using EseObjects;
 
-namespace Test
+namespace Test.DatabaseTests
 {
-	class Program
+	[TestFixture]
+	class TempTable
 	{
-		static void Main(string[] args)
+		[Test]
+		public static void Test()
 		{
-			Test.Functionality.Main.RunTests();
+			using(var tr = new Transaction(E.S))
+			{
+				var cto = Table.CreateTempOptions.NewWithLists();
+
+				cto.Columns.Add(new Column.CreateOptions{Type = Column.Type.Long, TTKey = true});
+
+				Column[] cols;
+
+				using(var csr = Table.CreateTemp(E.S, cto, out cols))
+				{
+					using(var upd = csr.BeginInsert())
+					{
+						upd.Set(cols[0], 3);
+						upd.Complete();
+					}
+					using(var upd = csr.BeginInsert())
+					{
+						upd.Set(cols[0], 4);
+						upd.Complete();
+					}
+
+					csr.MoveFirst();
+					Assert.That(csr.Retrieve<int>(cols[0]), Is.EqualTo(3));
+
+					csr.Move(1);
+					Assert.That(csr.Retrieve<int>(cols[0]), Is.EqualTo(4));
+
+					tr.Commit();
+				}
+			}
 		}
 	}
 }
