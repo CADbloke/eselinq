@@ -149,15 +149,16 @@ internal:
 		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCursorSesid(c), GetCursorTableID(c), _JetBookmark, _BookmarkLength, NULL, 0, 0);
 
 		NotEqual = false;
+		HasCurrency = false;
 		switch(status)
 		{
 		case JET_errRecordDeleted:
 		case JET_errNoCurrentRecord:
-			HasCurrency = false;
 			return;
 		}
 
 		EseException::RaiseOnError(status);
+		HasCurrency = true;
 	}
 };
 

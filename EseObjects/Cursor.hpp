@@ -1078,12 +1078,10 @@ internal:
 	{
 		JET_ERR status = JetSetIndexRange(Session->_JetSesid, _TableID->_JetTableID, grbit);
 
-		if(status == JET_errNoCurrentRecord)
-			return false;
+		if(status != JET_errNoCurrentRecord) //it's supposed to only return this if there are no entries in the range; it doesn't seem to really mean that though
+			EseException::RaiseOnError(status);
 
-		EseException::RaiseOnError(status);
-
-		return false;
+		return HasCurrent;
 	}
 
 public:
@@ -1091,7 +1089,7 @@ public:
 	///<returns>True iff there is a current record after the seek.</returns>
 	bool Seek(Seekable ^s)
 	{
-		bool has_currency, not_exact;
+		bool has_currency = false, not_exact = false;
 		s->SeekTo(has_currency, not_exact, this);
 		return has_currency;
 	}
@@ -1102,6 +1100,7 @@ public:
 	bool Seek(Seekable ^s, [Out] bool %NotEqual)
 	{
 		bool has_currency = false;
+		NotEqual = false;
 		s->SeekTo(has_currency, NotEqual, this);
 		return has_currency;
 	}
@@ -1257,7 +1256,7 @@ public:
 	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
 	bool ForwardRange(Seekable ^k1, Limitable ^k2)
 	{
-		bool has_currency, not_equal;
+		bool has_currency = false, not_equal = false;
 		k1->SeekTo(has_currency, not_equal, this);
 		k2->LimitTo(this, true);
 		return has_currency;
@@ -1267,7 +1266,7 @@ public:
 	///<remarks>The limit will be canceled by CancelRange, any method of moving the cursor other than Move, or setting a new limit.</remarks>
 	bool BackwardRange(Seekable ^k1, Limitable ^k2)
 	{
-		bool has_currency, not_equal;
+		bool has_currency = false, not_equal = false;
 		k1->SeekTo(has_currency, not_equal, this);
 		k2->LimitTo(this, false);
 		return has_currency;
@@ -1760,11 +1759,11 @@ internal:
 		JET_ERR status = JetGotoSecondaryIndexBookmark(GetCursorSesid(c), GetCursorTableID(c), Secondary->_JetBookmark, Secondary->_BookmarkLength, Primary->_JetBookmark, Primary->_BookmarkLength, 0);
 
 		NotEqual = false;
+		HasCurrency = false;
 		switch(status)
 		{
 		case JET_errRecordDeleted:
 		case JET_errNoCurrentRecord:
-			HasCurrency = false;
 			return;
 		}
 

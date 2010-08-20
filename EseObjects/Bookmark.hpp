@@ -168,16 +168,17 @@ internal:
 	{
 		JET_ERR status = JetGotoBookmark(GetCursorSesid(c), GetCursorTableID(c), _JetBookmark, _BookmarkLength);
 
-		NotEqual = false;
+		NotEqual = false; //bookmarks always match exactly or not at all
+		HasCurrency = false;
 		switch(status)
 		{
 		case JET_errRecordDeleted:
 		case JET_errNoCurrentRecord:
-			HasCurrency = false;
 			return;
 		}
 
 		EseException::RaiseOnError(status);
+		HasCurrency = true;
 	}
 };
 
