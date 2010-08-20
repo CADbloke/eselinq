@@ -55,20 +55,23 @@ private:
 	int _Code;
 	String ^_Symbol;
 	String ^_Description;
+	String ^_Message;
 
 public:
-	EseException(JET_ERR Code, String ^Symbol, String ^Description) :
-		ExternalException(_Description, JetErrToHRESULT(Code)), //convert to HRESULT, since that's what ExternalException expects
+	EseException(JET_ERR Code, String ^Message, String ^Symbol, String ^Description) :
+		ExternalException(Message, JetErrToHRESULT(Code)), //convert to HRESULT, since that's what ExternalException expects
 		_Code(Code),
 		_Symbol(Symbol),
-		_Description(Description)
+		_Description(Description),
+		_Message(Message)
 	{}
 
 	EseException(EseException %ee) :
 		_Code(ee._Code),
 		_Symbol(ee._Symbol),
-		_Description(ee.Description)
-		{}
+		_Description(ee._Description),
+		_Message(ee._Message)
+	{}
 
 	static EseException ^CreateFromCode(JET_ERR Code)
 	{
@@ -101,7 +104,7 @@ public:
 			Description = fields[1];
 		}
 
-		return gcnew EseException(Code, Symbol, Description);
+		return gcnew EseException(Code, str, Symbol, Description);
 	}
 
 
@@ -137,5 +140,11 @@ public:
 	property String ^Description
 	{
 		String ^get() {return _Description;}
+	}
+
+	///<summary>Error message containing both symbolic name and description of error</summary>
+	virtual property String ^Message 
+	{
+		String ^get() override {return _Message;}
 	}
 };
