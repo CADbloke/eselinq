@@ -203,6 +203,7 @@ public:
 		switch(_State)
 		{
 		case InstanceState::Global:
+		case InstanceState::Disposed:
 			throw gcnew InvalidOperationException(L"Object must be in Created state to call Init");
 
 		case InstanceState::Initialized:
@@ -213,6 +214,7 @@ public:
 			err = JetInit(&JetInstanceCopy);
 			_JetInstance = JetInstanceCopy;
 			EseException::RaiseOnError(err);
+			_State = InstanceState::Initialized;
 			break;
 		}
 	}
@@ -227,6 +229,7 @@ public:
 		switch(_State)
 		{
 		case InstanceState::Global:
+		case InstanceState::Disposed:
 			throw gcnew InvalidOperationException(L"Object must be in Created state to call Init");
 
 		case InstanceState::Initialized:
@@ -243,6 +246,7 @@ public:
 
 			EseException::RaiseOnError(JetInit2_demand(&JetInstanceCopy, flags));
 			_JetInstance = JetInstanceCopy;
+			_State = InstanceState::Initialized;
 			break;
 		}
 	}
