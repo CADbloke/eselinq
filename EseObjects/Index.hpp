@@ -279,7 +279,7 @@ public:
 		///<summary>Maximum length in bytes of each column to store for non-tuple indexes. Not compatible with specifying TupleLimits.</summary>
 		ulong VarSegMac;
 		///<summary>Specifies limits for a tuple index. Not compatible with VarSegMac. Requires 5.2+.</summary>
-		TupleLimits ^TupleLimits;//Sets JET_bitIndexTupleLimits.
+		Nullable<TupleLimits> TupleLimits;//Sets JET_bitIndexTupleLimits.
 		
 		///<summary>Additional conditional field options.</summary>
 		ICollection<ConditionalColumn> ^ConditionalColumns;
@@ -400,7 +400,7 @@ internal:
 			jic.lcid = NewIx.LCID;
 
 		//union between cbVarSegMac and ptuplelimits
-		if(NewIx.TupleLimits != nullptr)
+		if(NewIx.TupleLimits.HasValue)
 		{
 			if(NewIx.VarSegMac != 0)
 				throw gcnew ArgumentException("Can't specify both TupleLimtis and VarSegMac");
@@ -408,11 +408,11 @@ internal:
 			jic.grbit |= JET_bitIndexTupleLimits;
 
 			jic.ptuplelimits = fl.alloc_zero<JET_TUPLELIMITS>();
-			jic.ptuplelimits->chLengthMin = NewIx.TupleLimits->LengthMin;
-			jic.ptuplelimits->chLengthMax = NewIx.TupleLimits->LengthMax;
-			jic.ptuplelimits->chToIndexMax = NewIx.TupleLimits->CharsToIndexMax;
-			jic.ptuplelimits->cchIncrement = NewIx.TupleLimits->CharsToIncrement;
-			jic.ptuplelimits->ichStart = NewIx.TupleLimits->CharStart;
+			jic.ptuplelimits->chLengthMin = NewIx.TupleLimits.Value.LengthMin;
+			jic.ptuplelimits->chLengthMax = NewIx.TupleLimits.Value.LengthMax;
+			jic.ptuplelimits->chToIndexMax = NewIx.TupleLimits.Value.CharsToIndexMax;
+			jic.ptuplelimits->cchIncrement = NewIx.TupleLimits.Value.CharsToIncrement;
+			jic.ptuplelimits->ichStart = NewIx.TupleLimits.Value.CharStart;
 		}
 		else
 			jic.cbVarSegMac = NewIx.VarSegMac;
@@ -473,7 +473,7 @@ internal:
 
 		for each(String ^s in ColNames)
 		{
-			_KeyColumns[i].Name = s;
+			_KeyColumns[i].Name = s->Substring(1);
 			i++;
 		}
 
