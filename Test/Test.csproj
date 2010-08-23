@@ -83,7 +83,7 @@
     <Compile Include="DatabaseTests\Linq\BasicLinq.cs" />
     <Compile Include="DatabaseTests\SerializationTest.cs" />
     <Compile Include="DatabaseTests\TempTable.cs" />
-    <Compile Include="DatabaseTests\InvalidParms\InvalidCreateTable.cs" />
+    <Compile Include="DatabaseTests\CreateTableTest.cs" />
     <Compile Include="NonDatabaseTests\InstanceTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
