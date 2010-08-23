@@ -405,8 +405,13 @@ SortedList<JET_COLUMNID, Column ^> ^QueryTableColumns(JET_SESID JetSesid, JET_TA
 	try
 	{
 		Cols = gcnew SortedList<JET_COLUMNID, Column ^>(jcl.cRecord);
-		
-		EseException::RaiseOnError(JetMove(JetSesid, jcl.tableid, JET_MoveFirst, 0));
+	
+		JET_ERR status = JetMove(JetSesid, jcl.tableid, JET_MoveFirst, 0);
+
+		if(status == JET_errNoCurrentRecord)
+			return Cols; //apparently, there are no columns
+
+		EseException::RaiseOnError(status);
 
 		while(1)
 		{
@@ -443,7 +448,7 @@ SortedList<JET_COLUMNID, Column ^> ^QueryTableColumns(JET_SESID JetSesid, JET_TA
 			Cols->Add(jcd.columnid, Col);
 			
 			//proceed to next column record
-			JET_ERR status = JetMove(JetSesid, jcl.tableid, JET_MoveNext, 0);
+			status = JetMove(JetSesid, jcl.tableid, JET_MoveNext, 0);
 			if(status == JET_errNoCurrentRecord)
 				break; //done enumerating
 			else
