@@ -82,6 +82,7 @@
     <Compile Include="DatabaseTests\BasicTestData.cs" />
     <Compile Include="DatabaseTests\Linq\BasicLinq.cs" />
     <Compile Include="DatabaseTests\SerializationTest.cs" />
+    <Compile Include="DatabaseTests\TableTest.cs" />
     <Compile Include="DatabaseTests\TempTable.cs" />
     <Compile Include="DatabaseTests\CreateTableTest.cs" />
     <Compile Include="NonDatabaseTests\InstanceTests.cs" />

@@ -2,7 +2,7 @@
 // Project     :  EseLinq http://code.google.com/p/eselinq/
 // Copyright   :  (c) 2010 Christopher Smith
 // Maintainer  :  csmith32@gmail.com
-// Module      :  Test.DatabaseTest.InvalidCreateTable
+// Module      :  Test.DatabaseTest.CreateTableTest
 ///////////////////////////////////////////////////////////////////////////////
 //
 //This software is licenced under the terms of the MIT License:
@@ -161,18 +161,6 @@ namespace Test.DatabaseTests
 					Assert.That(tab.Columns.Count, Is.EqualTo(0));
 					Assert.That(tab.Indexes.Length, Is.EqualTo(1)); //one implicitly created index
 				}
-			}
-		}
-
-		[Test]
-		public void CreatedWithName()
-		{
-			using(var tr = new Transaction(E.S))
-			{
-				var nt = Table.CreateOptions.NewWithLists("TestTable");
-
-				using(var tab = Table.Create(E.D, nt))
-					Assert.That(tab.Name, Is.EqualTo("TestTable"));
 			}
 		}
 
@@ -350,30 +338,6 @@ namespace Test.DatabaseTests
 
 					Assert.That(kcols.Count, Is.EqualTo(1));
 					Assert.That(kcols[0].Name, Is.EqualTo("text"));
-				}
-			}
-		}
-
-		[Test]
-		public void DeleteTable()
-		{
-			using(var tr = new Transaction(E.S))
-			{
-				var nt = new Table.CreateOptions
-				{
-					Name = "DeleteMe"
-				};
-
-				Table.Create(E.D, nt).Dispose();
-				Table.Delete(E.D, "DeleteMe");
-
-				try
-				{
-					new Table(E.D, "DeleteMe").Dispose();
-				}
-				catch(EseException e)
-				{
-					Assert.That(e.Symbol, Is.EqualTo("JET_errObjectNotFound"));
 				}
 			}
 		}
