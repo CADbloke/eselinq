@@ -316,12 +316,12 @@ public:
 
 		//convenience constructors
 		///<summary>New index struct for secondary index with specified values></summary>
-		static CreateOptions NewPrimary(String ^Name, String ^KeyColumns, bool Unique)
+		static CreateOptions NewPrimary(String ^Name, String ^KeyColumns)
 		{
 			CreateOptions o;
 			o.Name = Name;
 			o.KeyColumns = KeyColumns;
-			o.Unique = Unique;
+			o.Unique = true;
 			o.Primary = true;
 			return o;
 		}

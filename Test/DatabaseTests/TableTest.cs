@@ -198,7 +198,7 @@ namespace Test.DatabaseTests
 					Version = true
 				});
 
-				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+text", true));
+				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+text"));
 
 				using(var tab = Table.Create(E.D, nt))
 				{
@@ -242,7 +242,7 @@ namespace Test.DatabaseTests
 				nt.Columns.Add(new Column.CreateOptions("id", Column.Type.Long));
 				nt.Columns.Add(new Column.CreateOptions("string", Column.Type.Text, Column.CodePage.English));
 
-				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id", true));
+				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id"));
 				nt.Indexes.Add(Index.CreateOptions.NewSecondary("string_first", "+string.-id", false));
 				nt.Indexes.Add(new Index.CreateOptions
 				{

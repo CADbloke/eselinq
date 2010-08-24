@@ -78,7 +78,7 @@ namespace Test.DatabaseTests
 				tco.Columns.Add(new Column.CreateOptions("OpenDate", Column.Type.DateTime));
 				tco.Columns.Add(new Column.CreateOptions("Customer", Column.Type.Long));
 
-				var ixco = Index.CreateOptions.NewPrimary("PK", "+ID", true);
+				var ixco = Index.CreateOptions.NewPrimary("PK", "+ID");
 				tco.Indexes.Add(ixco);
 
 				ixco = Index.CreateOptions.NewSecondary("OpenDateIx", "-OpenDate", false);
@@ -102,7 +102,7 @@ namespace Test.DatabaseTests
 				tco.Columns.Add(new Column.CreateOptions("ID", Column.Type.Long));
 				tco.Columns.Add(new Column.CreateOptions("Name", Column.Type.Text, Column.CodePage.Unicode));
 
-				ixco = Index.CreateOptions.NewPrimary("PK", "+ID", true);
+				ixco = Index.CreateOptions.NewPrimary("PK", "+ID");
 				tco.Indexes.Add(ixco);
 
 				ixco = Index.CreateOptions.NewSecondary("Name", "+Name", true);
@@ -120,7 +120,7 @@ namespace Test.DatabaseTests
 				tco.Columns.Add(new Column.CreateOptions("Desc", Column.Type.LongText, Column.CodePage.English));
 				tco.Columns.Add(new Column.CreateOptions("Amount", Column.Type.Currency));
 
-				ixco = Index.CreateOptions.NewPrimary("PK", "+Order.+Seq", true);
+				ixco = Index.CreateOptions.NewPrimary("PK", "+Order.+Seq");
 				tco.Indexes.Add(ixco);
 
 				ixco = new Index.CreateOptions

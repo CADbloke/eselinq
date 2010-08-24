@@ -125,7 +125,7 @@ namespace Test.DatabaseTests
 
 				nt.Columns.Add(new Column.CreateOptions("id", Column.Type.Long));
 
-				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id", true));
+				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id"));
 
 				nt.Indexes.Add(new Index.CreateOptions
 				{
@@ -238,7 +238,7 @@ namespace Test.DatabaseTests
 					Version = true
 				});
 
-				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+text", true));
+				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+text"));
 
 				Column[] cols;
 				Index[] ixs;
@@ -280,7 +280,7 @@ namespace Test.DatabaseTests
 				var nt = Table.CreateOptions.NewWithLists("TestTable");
 
 				nt.Columns.Add(new Column.CreateOptions("id", Column.Type.Long));
-				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id", true));
+				nt.Indexes.Add(Index.CreateOptions.NewPrimary("pk", "+id"));
 
 				Column[] cols;
 				Index[] ixs;

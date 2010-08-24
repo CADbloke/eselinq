@@ -269,7 +269,7 @@ namespace Test.DatabaseTests
                 },
 				Indexes = new Index.CreateOptions[]
                 {
-                    Index.CreateOptions.NewPrimary("PK", "+C1.+C2", true)
+                    Index.CreateOptions.NewPrimary("PK", "+C1.+C2")
                 }
 			});
 

@@ -67,7 +67,7 @@ namespace Test.DatabaseTests.Linq
 					},
 					Indexes = new Index.CreateOptions[]
 					{
-						Index.CreateOptions.NewPrimary("PK", "+a", true)
+						Index.CreateOptions.NewPrimary("PK", "+a")
 					}
 				}, out col, out ix);
 
