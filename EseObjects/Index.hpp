@@ -578,4 +578,59 @@ public:
 	{
 		IEnumerable<KeyColumn> ^get() {return _KeyColumns;}
 	}
+
+	property bool Unique
+	{
+		bool get() {return _JetFlags & JET_bitIndexUnique;}
+	}
+
+	property bool Primary
+	{
+		bool get() {return _JetFlags & JET_bitIndexPrimary;}
+	}
+
+	property bool DisallowNull
+	{
+		bool get() {return _JetFlags & JET_bitIndexDisallowNull;}
+	}
+
+	property bool IgnoreAllNull
+	{
+		bool get() {return _JetFlags & JET_bitIndexIgnoreNull;}
+	}
+
+	property bool IgnoreAnyNull
+	{
+		bool get() {return _JetFlags & JET_bitIndexIgnoreAnyNull;}
+	}
+
+	property bool IgnoreFirstNull
+	{
+		bool get() {return _JetFlags & JET_bitIndexIgnoreFirstNull;}
+	}
+
+	property bool LazyFlush
+	{
+		bool get() {return _JetFlags & JET_bitIndexLazyFlush;}
+	}
+
+	property bool NullSortedHigh
+	{
+		bool get() {return _JetFlags & JET_bitIndexSortNullsHigh;}
+	}
+
+	property bool TupleIndex
+	{
+		bool get() {return _JetFlags & JET_bitIndexTuples;}
+	}
+
+	property bool CrossProduct
+	{
+		bool get() {return _JetFlags & JET_bitIndexCrossProduct;}
+	}
+
+	property bool DiallowTruncation
+	{
+		bool get() {return _JetFlags & JET_bitIndexDisallowTruncation;}
+	}
 };
