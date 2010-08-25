@@ -77,6 +77,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DatabaseTests\BookmarkTest.cs" />
+    <Compile Include="DatabaseTests\ColumnTest.cs" />
     <Compile Include="DatabaseTests\KeyTest.cs" />
     <Compile Include="DatabaseTests\Setup.cs" />
     <Compile Include="DatabaseTests\BasicTestData.cs" />
