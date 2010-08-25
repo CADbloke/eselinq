@@ -315,10 +315,10 @@ public:
 	}
 
 	///<summary>Deletes this column. Must be associated with the specified table. Calls JetDeleteColumn.</summary>
-	void DeleteColumn(Table ^SrcTable)
+	static void Delete(Table ^SrcTable, String ^ColumnName)
 	{
 		marshal_context mc;
-		String ^ColNameHandleCopy = _ColumnName;
+		String ^ColNameHandleCopy = ColumnName;
 		JET_TABLEID tableid = GetTableTableID(SrcTable);
 		JET_SESID sesid = GetTableSesid(SrcTable);
 
