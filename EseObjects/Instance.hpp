@@ -921,4 +921,54 @@ public:
 
 		return false;
 	}
+
+	bool IsVersionAtLeast(ushort Major)
+	{
+		return VersionMajor >= Major;
+	}
+
+	bool IsVersionAtLeast(ushort Major, ushort Minor)
+	{
+		if(VersionMajor > Major)
+			return true;
+		if(VersionMajor < Major)
+			return false;
+
+		return VersionMinor >= Minor;
+	}
+
+	bool IsVersionAtLeast(ushort Major, ushort Minor, ushort Build1)
+	{
+		if(VersionMajor > Major)
+			return true;
+		if(VersionMajor < Major)
+			return false;
+
+		if(VersionMinor > Minor)
+			return true;
+		if(VersionMinor < Minor)
+			return false;
+
+		return VersionBuild1 >= Build1;
+	}
+
+	bool IsVersionAtLeast(ushort Major, ushort Minor, ushort Build1, ushort Build2)
+	{
+		if(VersionMajor > Major)
+			return true;
+		if(VersionMajor < Major)
+			return false;
+
+		if(VersionMinor > Minor)
+			return true;
+		if(VersionMinor < Minor)
+			return false;
+
+		if(VersionBuild1 > Build1)
+			return true;
+		if(VersionBuild1 < Build1)
+			return false;
+
+		return VersionBuild2 >= Build2;
+	}
 };
