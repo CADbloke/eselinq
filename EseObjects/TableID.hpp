@@ -74,6 +74,7 @@ internal:
 	!TableID()
 	{
 		if(_JetTableID)
+		{
 			if(_Trans)
 				switch(_Trans->_Status)
 				{
@@ -87,6 +88,10 @@ internal:
 				case Transaction::Status::Rollbacked:
 					_JetTableID = null; //it's invalid anyway
 				}
+			else
+				EseException::RaiseOnError(JetCloseTable(Session->_JetSesid, _JetTableID));
+		}
+
 	}
 
 	TableID ^Duplicate()
