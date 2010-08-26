@@ -75,6 +75,13 @@ public:
 		Session->_CurrentTrans = this;
 	}
 
+	///<summary>Begins a new transaction that lasts for the lifetime of the object. Calls JetBeginTransaction. </summary>
+	static Transaction ^Begin(EseObjects::Session ^Session)
+	{
+		Session->BeginTransaction();
+		return gcnew Transaction(Session, false);
+	}
+
 	///<summary>Begins a new readonly transaction that lasts for the lifetime of the object. Calls JetBeginTransaction2 with JET_bitTransactionReadOnly.</summary>
 	static Transaction ^BeginReadonly(EseObjects::Session ^Session)
 	{
