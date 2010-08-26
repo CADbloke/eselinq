@@ -107,7 +107,7 @@ public:
 		}
 	}
 
-	///<summary>Retrieves the current Transaction object. Only meaningful when using EseObjects.Transaction objects (as opposed to the transaction methods defined in this class).</summary>
+	///<summary>Retrieves the current Transaction object.</summary>
 	property Transaction ^CurrentTransaction
 	{
 		Transaction ^get() {return _CurrentTrans;}
