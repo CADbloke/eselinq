@@ -163,6 +163,7 @@ namespace Test.DatabaseTests
 			try
 			{
 				new Table(E.D, "EtherealTable").Dispose();
+				Assert.Fail("Exception expected");
 			}
 			catch(EseException e)
 			{

@@ -106,6 +106,7 @@ namespace Test.DatabaseTests
 				try
 				{
 					Table.Create(E.D, nt).Dispose();
+					Assert.Fail("Exception expected");
 				}
 				catch(CreateTableException e)
 				{
@@ -136,6 +137,7 @@ namespace Test.DatabaseTests
 				try
 				{
 					Table.Create(E.D, nt).Dispose();
+					Assert.Fail("Exception expected");
 				}
 				catch(CreateTableException e)
 				{

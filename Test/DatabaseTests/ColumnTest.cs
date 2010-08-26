@@ -77,6 +77,7 @@ namespace Test.DatabaseTests
 				try
 				{
 					var col = new Column(tab, "delete_me");
+					Assert.Fail("Exception expected");
 				}
 				catch(EseException e)
 				{
@@ -104,7 +105,7 @@ namespace Test.DatabaseTests
 
 				var col2 = new Column(tab, "new_name");
 
-				try
+					try
 				{
 					var col = new Column(tab, "old_name");
 				}

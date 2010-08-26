@@ -55,6 +55,7 @@ namespace Test.DatabaseTests
 				try
 				{
 					new Table(E.D, "DeleteMe").Dispose();
+					Assert.Fail("Exception expected");
 				}
 				catch(EseException e)
 				{
@@ -94,6 +95,7 @@ namespace Test.DatabaseTests
 				try
 				{
 					new Table(E.D, "OldName").Dispose();
+					Assert.Fail("Exception expected");
 				}
 				catch(EseException e)
 				{
