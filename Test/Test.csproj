@@ -86,6 +86,7 @@
     <Compile Include="DatabaseTests\TableTest.cs" />
     <Compile Include="DatabaseTests\TempTable.cs" />
     <Compile Include="DatabaseTests\CreateTableTest.cs" />
+    <Compile Include="DatabaseTests\TransactionTest.cs" />
     <Compile Include="NonDatabaseTests\InstanceTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
